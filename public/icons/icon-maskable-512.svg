@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Maskable safe zone: 중앙 40% 안전 영역 안에 텍스트 배치 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#C0306B"/>
+  <g transform="translate(256 256)" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="middle">
+    <text y="-16" font-size="80" font-weight="800" fill="white" letter-spacing="-3">투어</text>
+    <text y="74" font-size="80" font-weight="800" fill="#FBE0E8" letter-spacing="-3">단가</text>
+  </g>
+</svg>

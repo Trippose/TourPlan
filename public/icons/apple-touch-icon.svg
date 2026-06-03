@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <rect width="180" height="180" rx="38" ry="38" fill="#C0306B"/>
+  <g transform="translate(90 90)" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="middle">
+    <text y="-14" font-size="30" font-weight="800" fill="white" letter-spacing="-1">투어</text>
+    <text y="22" font-size="30" font-weight="800" fill="#FBE0E8" letter-spacing="-1">단가</text>
+    <text y="52" font-size="12" font-weight="700" fill="#FBE0E8" letter-spacing="2">BEP·매트릭스</text>
+  </g>
+</svg>

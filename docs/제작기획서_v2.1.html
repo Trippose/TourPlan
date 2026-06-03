@@ -1,0 +1,2122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>투어 패키지 단가표 PWA — 제작 기획서 v2.0 (Agentic Integration)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=Noto+Serif+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+/* 제작기획서 전용 보완 토큰 */
+.decision-table td:nth-child(1){width:60px;font-family:'JetBrains Mono',monospace;color:var(--gold-700);font-weight:700}
+.decision-table td:nth-child(2){width:200px;font-weight:600;color:var(--teal-800)}
+.decision-table td:nth-child(3){color:var(--ink-700)}
+.decision-table td:nth-child(4){width:140px;color:var(--ink-500);font-size:12px}
+.layer-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:18px 0}
+.layer-box{padding:18px 20px;border-radius:var(--radius);background:#fff;border:1px solid var(--ink-200);border-top:3px solid var(--teal-600)}
+.layer-box.fail{border-top-color:var(--red-600)}
+.layer-box.warn{border-top-color:var(--gold-500)}
+.layer-box-head{font-weight:700;color:var(--teal-900);font-size:14px;margin-bottom:6px}
+.layer-box-body{font-size:13px;color:var(--ink-700);line-height:1.65}
+.ddl-block pre{font-size:12.5px}
+.phase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+.phase-box{padding:14px 16px;background:var(--white);border:1px solid var(--ink-200);border-radius:8px;font-size:12.5px}
+.phase-box.active{background:var(--gold-50);border-color:var(--gold-500)}
+.phase-box-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold-700);font-weight:700;letter-spacing:.05em}
+.phase-box-title{font-weight:700;color:var(--teal-900);font-size:14px;margin:2px 0 4px}
+.phase-box-body{color:var(--ink-600);line-height:1.5}
+@media (max-width:1024px){.phase-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){.phase-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="scroll-indicator"><div class="scroll-indicator-bar" id="scrollBar"></div></div>
+
+<div class="app">
+  <aside class="toc">
+    <div class="toc-brand">
+      <div class="toc-brand-title">투어패키지 단가표 PWA</div>
+      <div class="toc-brand-sub">PRODUCTION SPEC · AGENTIC INTEGRATION</div>
+      <div class="toc-brand-ver">v2.0 — 2026-05-18</div>
+    </div>
+    <ol>
+      <li><a href="#s00">표지·요약</a></li>
+      <li><a href="#s01">본 문서 위치</a></li>
+      <li><a href="#s02">핵심 결정 요약</a></li>
+      <li><a href="#s03">사용자·접근 모델</a></li>
+      <li><a href="#s04">시스템 아키텍처</a></li>
+      <li><a href="#s05">데이터 모델 (DDL)</a></li>
+      <li><a href="#s06">RLS·권한 정책</a></li>
+      <li><a href="#s07">단가 계산 로직</a></li>
+      <li><a href="#s08">화면 명세·와이어</a></li>
+      <li><a href="#s09">CMS 관리자 명세</a></li>
+      <li><a href="#s10">PWA·캐시 전략</a></li>
+      <li><a href="#s11">출력 (PDF·엑셀)</a></li>
+      <li><a href="#s12">기술 스택 확정</a></li>
+      <li><a href="#s13">6주 로드맵</a></li>
+      <li><a href="#s14">성공 기준 (KPI)</a></li>
+      <li><a href="#s15">리스크·완화책</a></li>
+      <li><a href="#s16">자기 검증</a></li>
+      <li><a href="#s17">부록·체크리스트</a></li>
+      <li style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.18)"><a href="#s18" style="color:#FFB5C5;font-weight:600">★ S18 v2.0 통합 매트릭스</a></li>
+      <li><a href="#s19" style="color:#FFB5C5;font-weight:600">★ S19 도메인 용어집 22</a></li>
+      <li><a href="#s20" style="color:#FFB5C5;font-weight:600">★ S20 금액 표시 규칙</a></li>
+      <li><a href="#s21" style="color:#FFB5C5;font-weight:600">★ S21 Week 0~1 체크리스트</a></li>
+    </ol>
+    <div class="toc-footer">
+      WATERTREE · 본 문서는<br>
+      <strong style="color:#fff">통합·디자인 기획서</strong>의<br>
+      <strong style="color:#FC2D59">16 결정 통합</strong> 산출물.<br>
+      Week 1 코딩 직전 최종본.
+    </div>
+  </aside>
+
+  <main>
+
+  <!-- ============ S00 표지 ============ -->
+  <section id="s00">
+    <div class="hero">
+      <div class="hero-badge"><span class="hero-badge-dot"></span> PRODUCTION SPEC · AGENTIC INTEGRATION · v2.1 PATCH</div>
+      <h1>외국인 <span class="accent">투어 패키지</span><br>단가표 PWA — <span class="accent">제작 기획서 v2.1</span></h1>
+      <p class="hero-sub">통합기획서 v1.0 + 디자인기획서 v1.0(S43 신설)의 <strong>19건 결정(D33~D51)</strong>을 단일 진실 소스로 통합. v2.1 PATCH 본질: <strong>Cost-First · Campaign-Second</strong> — 1단계 1인 원가표(마진 0) ↔ 2단계 판매 캠페인 시뮬레이션 분리. 차량 대수 자동, 캘린더·요일·휴무일 모듈. 본 문서 승인 시 Week 0 환경 준비 + Week 1 코딩 착수.</p>
+      <div class="hero-meta">
+        <div class="hero-meta-item"><span class="hero-meta-label">버전</span><span class="hero-meta-value">v2.1</span></div>
+        <div class="hero-meta-item"><span class="hero-meta-label">작성일</span><span class="hero-meta-value">2026-05-18</span></div>
+        <div class="hero-meta-item"><span class="hero-meta-label">Phase 0 출시 목표</span><span class="hero-meta-value">착수 +6주 (TBD)</span></div>
+        <div class="hero-meta-item"><span class="hero-meta-label">배포</span><span class="hero-meta-value">Vercel Hobby (.vercel.app)</span></div>
+        <div class="hero-meta-item"><span class="hero-meta-label">월 예산</span><span class="hero-meta-value">0원 (Free Tier 강제)</span></div>
+        <div class="hero-meta-item"><span class="hero-meta-label">상태</span><span class="hero-meta-value">대표 승인 대기</span></div>
+      </div>
+    </div>
+
+    <div class="callout callout-gold">
+      <div class="callout-title">★ 본 기획서의 위치 (v2.1)</div>
+      <p style="margin:0">v1.0(2026-05-15) → v2.0(2026-05-18) 3일간 누적된 <strong>16건 결정</strong>을 통합. 본질 재정의(User-Owned), 차량 11종 + DG, BEP 계산, 5채널 수수료, 5레벨 메모, 10시트 엑셀, AI 보고서(Groq Free), 보안 16레이어, 신규 컬러(#FC2D59 + #00BCB0). 두 상위 문서(통합·디자인)와 짝을 이루며, 본 문서가 <strong>구현·검증의 기준선</strong>이다.</p>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi kpi-gold">
+        <div class="kpi-label">사전 결정 항목</div>
+        <div class="kpi-value">51</div>
+        <div class="kpi-sub">Q1~Q32 + D33~D51 19건</div>
+      </div>
+      <div class="kpi kpi-teal">
+        <div class="kpi-label">Phase 0 핵심 테이블</div>
+        <div class="kpi-value">7</div>
+        <div class="kpi-sub">기존 11 → User-Owned 축소</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Phase 0 화면</div>
+        <div class="kpi-value">14</div>
+        <div class="kpi-sub">공개 9 (5+4 my) + CMS 5</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">예상 LOC</div>
+        <div class="kpi-value">~9.5k</div>
+        <div class="kpi-sub">TS+TSX, 테스트 제외</div>
+      </div>
+    </div>
+
+    <div class="callout callout-teal" style="margin-top:18px">
+      <div class="callout-title" style="color:#FC2D59">★ v1.0 → v2.1 핵심 차이 9선</div>
+      <ol style="margin:6px 0 0;padding-left:20px;line-height:1.85">
+        <li><strong>본질 재정의</strong> — 마스터 11 테이블 강요 → 사용자 라이브러리(user_library) + 핵심 운영 7 테이블만 워터트리 관리.</li>
+        <li><strong>계산 STEP 8 → 14</strong> — DG 비용 모델, 채널별 수수료, BEP, OTA 6사 비교 추가.</li>
+        <li><strong>차량 11종 + DG</strong> — 카니발/스타리아/솔라티/카운티/에어로타운/유니버스/그랜버드 + 통역안내사 드라이빙.</li>
+        <li><strong>5레벨 메모 시스템</strong> — 패키지/Day/항목/거래처/고객 메모 분리 저장.</li>
+        <li><strong>출력 6시트 → 10시트</strong> + 공유 6방식(URL·QR·매직링크·PDF·엑셀·인쇄).</li>
+        <li><strong>금액 표시 규칙</strong> — 전 화면·전 출력 <strong>VAT 10% 포함 합계</strong> 기본 표기 (S20 참조).</li>
+        <li style="color:#FC2D59"><strong>★ v2.1 — 1·2단계 분리 (Cost-First · Campaign-Second)</strong> — 1단계 1인 원가표(마진 0) ↔ 2단계 판매 캠페인 시뮬레이션. STEP 6 마진을 1단계에서 분리하여 STEP M1~M5(2단계)로 이동.</li>
+        <li style="color:#FC2D59"><strong>★ v2.1 — 차량 대수 자동 산출</strong> — 80명 + 45인승 → 2대. 가이드·DG도 1대당 1명 자동. 사용자는 차량 인승 종류만 선택.</li>
+        <li style="color:#FC2D59"><strong>★ v2.1 — 캘린더·요일·휴무일 모듈</strong> — 운영 요일 패턴(예: 수·목·금) + 월간 캘린더 + 휴무일 포함/제외 토글. 공공데이터포털 특일 정보 API(무료).</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ S01 본 문서 위치 ============ -->
+  <section id="s01">
+    <div class="sec-head"><span class="sec-num">S01</span><h2 class="sec-title">본 문서의 위치</h2><span class="sec-kicker">SCOPE</span></div>
+
+    <h3>관계도</h3>
+    <div class="wire">┌───────────────────────────────────────────────────────────┐
+│ [상위] 통합기획서 v1.0 (2026-04)                            │
+│   · 제품 비전·시장·페르소나·기능 우선순위                    │
+│   · Phase 0~3 단계 정의                                    │
+│   · Claude-inspired 디자인 토큰                            │
+└──────────────┬────────────────────────────────────────────┘
+               │ 채택
+┌──────────────▼────────────────────────────────────────────┐
+│ [본 문서] 제작기획서 v1.0 (2026-05-15)                     │
+│   · Schema-First Hybrid 구현 전략                          │
+│   · 32 사전 결정 (Q1~Q32 + 권고 일괄)                       │
+│   · 데이터 모델 DDL + RLS 정책                              │
+│   · 6주 Phase 0 로드맵                                     │
+│   · 자기 검증 (5-Layer + Red-Team)                         │
+└──────────────┬────────────────────────────────────────────┘
+               │ 승인
+┌──────────────▼────────────────────────────────────────────┐
+│ [후속] Phase 0 구현                                         │
+│   Week 1: Supabase 스키마 + 시드 + 타입 생성                │
+│   Week 2~5: 프론트 빌더 + /admin CMS 병행                  │
+│   Week 6: 통합 QA + Vercel 배포                            │
+└───────────────────────────────────────────────────────────┘</div>
+
+    <h3>책임 분리</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th width="22%">영역</th><th>통합기획서 v1.0</th><th>제작기획서 v1.0 (본 문서)</th></tr></thead>
+        <tbody>
+          <tr><td><strong>왜 만드는가</strong></td><td>○ (시장 공백·페르소나·경쟁)</td><td>요약만 인용</td></tr>
+          <tr><td><strong>무엇을 만드는가</strong></td><td>○ (Phase별 기능 우선순위)</td><td>Phase 0 범위 확정</td></tr>
+          <tr><td><strong>어떻게 만드는가</strong></td><td>방향성·기술 후보</td><td>○ (DDL·API·화면·일정)</td></tr>
+          <tr><td><strong>언제까지</strong></td><td>Week 단위 큰 그림</td><td>○ (6주 마일스톤·체크리스트)</td></tr>
+          <tr><td><strong>검증 기준</strong></td><td>Phase별 성공 KPI</td><td>○ (코드 게이트·QA 체크리스트·자기 검증)</td></tr>
+          <tr><td><strong>위험</strong></td><td>비즈니스 리스크</td><td>○ (구현·운영 리스크 + 완화책)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>본 문서가 다루지 않는 것</h3>
+    <ul>
+      <li>제품 비전 재논의 — 통합기획서 v1.0 그대로 채택.</li>
+      <li>Phase 1·2·3 상세 — 본 문서는 Phase 0 한정. 자리 확보만.</li>
+      <li>마케팅·세일즈 전략 — Phase 0은 무홍보 내부 검증 단계.</li>
+      <li>법무 약관·개인정보처리방침 — Phase 1 회원 도입 시점에 별도 산출물.</li>
+    </ul>
+  </section>
+
+  <!-- ============ S02 핵심 결정 ============ -->
+  <section id="s02">
+    <div class="sec-head"><span class="sec-num">S02</span><h2 class="sec-title">핵심 결정 요약 (51 항목 = 32 + v2.0 16 + v2.1 3)</h2><span class="sec-kicker">DECISIONS</span></div>
+
+    <p>본 표는 대표(WATERTREE)와의 객관식 Q&amp;A 결과를 정리한 것이다. v1.0에서 권고 일괄 채택된 <strong>Q1~Q32</strong>에, v2.0에서 추가된 <strong>D33~D48 16건</strong>(디자인기획서 S34~S42 누적)과 v2.1 PATCH <strong>D49~D51 3건</strong>(디자인기획서 S43)을 합한 51 항목이 단일 진실 소스다.</p>
+
+    <h3>A. 사용자·접근 (Q1~Q6 + Q15 재정의)</h3>
+    <div class="tbl-wrap"><table class="decision-table">
+      <thead><tr><th>#</th><th>주제</th><th>결정</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>Q1</td><td>1차 사용자</td><td><strong>비로그인 누구나</strong> (Q15 재정의 후). 페르소나는 한국 인바운드 여행사 기획자·가이드. 기존 엑셀 사용자 흡수.</td><td>대표 통찰</td></tr>
+        <tr><td>Q2</td><td>데이터 격리</td><td>마스터 데이터(차량·가이드·관광지)는 <strong>public read</strong>. 사용자 측 저장은 localStorage 단독.</td><td>비로그인 모델 귀결</td></tr>
+        <tr><td>Q3</td><td>회사 격리</td><td>불필요. 회사 개념 제거.</td><td>비로그인 귀결</td></tr>
+        <tr><td>Q4</td><td>역할</td><td><strong>super-admin 1명 (대표)</strong>만. 다른 역할 미구현.</td><td>비로그인 귀결</td></tr>
+        <tr><td>Q5</td><td>인증</td><td>본인 1계정 Email+Password. Supabase Studio에서 직접 생성. <strong>가입 UI 없음</strong>.</td><td>비로그인 귀결</td></tr>
+        <tr><td>Q6</td><td>가입 정책</td><td>일반 사용자 가입 차단. 가입 라우트 자체 미배포.</td><td>비로그인 귀결</td></tr>
+        <tr><td>Q15</td><td>저장·공유</td><td><strong>localStorage 저장 + URL 해시 공유</strong>. lz-string 압축. 서버 DB에 비로그인 사용자 데이터 미보관.</td><td>대표 선택</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>B. 일정·예산·배포 (Q7~Q10)</h3>
+    <div class="tbl-wrap"><table class="decision-table">
+      <thead><tr><th>#</th><th>주제</th><th>결정</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>Q7</td><td>Phase 0 출시</td><td><strong>착수일 +6주 (TBD · 착수 확정 후 역산)</strong>. Week 1 스키마, Week 2~5 병행, Week 6 통합 QA + 배포.</td><td>대표 선택</td></tr>
+        <tr><td>Q8</td><td>월 운영비</td><td><strong>0원</strong>. Vercel Hobby + Supabase Free + .vercel.app + Cloudflare 미사용.</td><td>대표 선택</td></tr>
+        <tr><td>Q9</td><td>도메인</td><td><strong>.vercel.app 서브도메인</strong> (예: tourplan-watertree.vercel.app). Phase 1 트래픽 증가 시 신규 도메인 재검토.</td><td>대표 선택</td></tr>
+        <tr><td>Q10</td><td>CMS 위치</td><td><strong>같은 앱 /admin</strong>. 미들웨어로 super-admin 외 차단.</td><td>대표 선택</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>C. 연동·데이터 (Q11~Q14, Q16)</h3>
+    <div class="tbl-wrap"><table class="decision-table">
+      <thead><tr><th>#</th><th>주제</th><th>결정</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>Q11</td><td>연동 모드</td><td><strong>캐시-퍼스트 + 백그라운드 동기</strong>. Service Worker가 마스터 데이터 캐시. 오프라인 읽기 가능, 쓰기는 무관(비로그인 모델).</td><td>대표 선택</td></tr>
+        <tr><td>Q12</td><td>시드 데이터</td><td><strong>대표가 /admin CMS에서 직접 입력</strong>. Week 1 마지막에 차량 5종·가이드 10명·관광지 50건 수기 입력.</td><td>대표 선택</td></tr>
+        <tr><td>Q13</td><td>카카오 지도</td><td>Phase 0 제외. <strong>주소 텍스트 + 좌표 수동 입력</strong>. Phase 1에 카카오 개발자 앱 신규 등록 + 지도 임베드.</td><td>대표 선택</td></tr>
+        <tr><td>Q14</td><td>다국어</td><td><strong>한국어 단독</strong>. next-intl 미적용. Phase 1에 ko+en 도입 시 메시지 키 일괄 추출.</td><td>대표 선택</td></tr>
+        <tr><td>Q16</td><td>인원 모델</td><td><strong>연령대별(성인·소아·유아·경로) 분리</strong> + 총 N 자동 집계. AgeTierPricing 가중치 적용.</td><td>대표 선택</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>D. 비즈니스 로직 (Q17~Q23)</h3>
+    <div class="tbl-wrap"><table class="decision-table">
+      <thead><tr><th>#</th><th>주제</th><th>결정</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>Q17</td><td>통화·VAT</td><td><strong>KRW 입력 + USD 병기</strong> + VAT 10% 기본. 환율은 수동 입력 (Phase 1에 한국수출입은행 API).</td><td>대표 선택</td></tr>
+        <tr><td>Q18</td><td>마진</td><td><strong>netMargin + retailMargin 2단계</strong>. 기본값 net 12% / retail 35%.</td><td>대표 선택</td></tr>
+        <tr><td>Q19</td><td>차량 분류</td><td><strong>인승 × 등급 2차원</strong>. 인승 {9,15,25,35,45} · 등급 {일반,고급,프리미엄}.</td><td>대표 선택</td></tr>
+        <tr><td>Q20</td><td>가이드</td><td><strong>언어 × 등급 × 일당</strong>. 언어 {ko,en,ja,zh,…} · 등급 {관광통역안내사,랜드오퍼레이터,시니어,…}.</td><td>대표 선택</td></tr>
+        <tr><td>Q21</td><td>시즌제</td><td><strong>Phase 0부터 도입</strong>. peak/shoulder/off/holiday 4단계 · 날짜 범위 다중.</td><td>대표 선택</td></tr>
+        <tr><td>Q22</td><td>POI</td><td>통합 <strong>places 테이블 + type</strong> (sight/restaurant/show/hotel/shopping).</td><td>대표 선택</td></tr>
+        <tr><td>Q23</td><td>포함·불포함</td><td><strong>템플릿 8+8 선택 + 자유 추가</strong>. 패키지 단위 저장.</td><td>대표 선택</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>E. 출력·UI (Q24~Q29)</h3>
+    <div class="tbl-wrap"><table class="decision-table">
+      <thead><tr><th>#</th><th>주제</th><th>결정</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>Q24</td><td>엑셀</td><td><strong>한 .xlsx 파일에 여러 시트</strong> (요약·Day별·공통비용·계산식). SheetJS.</td><td>대표 선택</td></tr>
+        <tr><td>Q25</td><td>PDF</td><td><strong>window.print() + @media print</strong>. A4 레이아웃 명시. 별도 라이브러리 없음.</td><td>대표 선택</td></tr>
+        <tr><td>Q26</td><td>디자인 토큰</td><td><strong>Claude-inspired 그대로</strong> (통합기획서 v1 토큰 재사용).</td><td>대표 선택</td></tr>
+        <tr><td>Q27</td><td>폰트</td><td><strong>Pretendard(본문) + Noto Serif KR(제목) + JetBrains Mono(숫자)</strong>. Tiempos Text 대체. 모두 무료.</td><td>대표 선택</td></tr>
+        <tr><td>Q28</td><td>디바이스</td><td><strong>데스크톱 우선 + 모바일 반응형</strong>. Tailwind 기본 breakpoint.</td><td>대표 선택</td></tr>
+        <tr><td>Q29</td><td>PWA</td><td><strong>@serwist/next v9</strong> + manifest + 마스터 데이터 stale-while-revalidate.</td><td>대표 선택</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>F. 기술 스택·운영 (Q30~Q32 + 권고 일괄)</h3>
+    <div class="tbl-wrap"><table class="decision-table">
+      <thead><tr><th>#</th><th>주제</th><th>결정</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>Q30</td><td>광고 자리</td><td>스키마 ad_slots만 둠 (미사용). 실제 노출은 Phase 2 AdSense.</td><td>대표 선택</td></tr>
+        <tr><td>Q31</td><td>Next.js 버전</td><td><strong>설치 시점 latest</strong> (Week 1 첫 작업: <code>npm view next dist-tags</code> 결과 기록 후 lock).</td><td>대표 선택</td></tr>
+        <tr><td>Q32</td><td>테스트</td><td><strong>Vitest 단위</strong> (계산 로직 한정) + 수동 QA. E2E는 Phase 1.</td><td>대표 선택</td></tr>
+        <tr><td>—</td><td>패키지 매니저</td><td>npm</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>UI 컴포넌트</td><td>shadcn/ui + Tailwind v4</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>상태 관리</td><td>zustand + localStorage persist</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>폼</td><td>react-hook-form + zod</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>데이터 fetching</td><td>TanStack Query v5 + Supabase JS v2</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>아이콘</td><td>lucide-react</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>TS strict</td><td>strict + noUncheckedIndexedAccess</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>Supabase 리전</td><td>Asia Northeast (Seoul) ap-northeast-2</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>마이그레이션</td><td>Supabase CLI (supabase/migrations 디렉터리)</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>타입 동기화</td><td><code>supabase gen types typescript</code> 빌드 전 자동 실행</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>모니터링</td><td>Vercel Analytics(무료) + Sentry Free + UptimeRobot</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>CI/CD</td><td>GitHub → Vercel 자동 (Preview·Production)</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>접근성</td><td>WCAG 2.2 AA 목표</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>다크모드</td><td>Phase 0 미지원</td><td>권고 일괄</td></tr>
+        <tr><td>—</td><td>코드 라이선스</td><td>폐쇄 (private repo)</td><td>권고 일괄</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 style="margin-top:32px;color:#FC2D59">G. v2.0 추가 결정 (D33~D48 · 16건)</h3>
+    <p style="color:var(--ink-600);font-size:13px;margin-top:-6px">디자인기획서 S34~S42 누적 결정의 제작 단계 통합. 출처 섹션 컬럼은 디자인기획서 v1.0 기준.</p>
+    <div class="tbl-wrap"><table class="decision-table">
+      <thead><tr><th>#</th><th>주제</th><th>결정</th><th>출처</th></tr></thead>
+      <tbody>
+        <tr><td>D33</td><td>본질 재정의</td><td><strong>User-Owned · CMS Minimal</strong>. 마스터 강요 제거. 사용자 라이브러리(user_library) + 운영 7 테이블. 워터트리는 운영만.</td><td>S34</td></tr>
+        <tr><td>D34</td><td>이메일 인증</td><td><strong>Magic Link 하이브리드</strong>(Resend Free). 비로그인 즉시 사용 + 선택적 인증 시 클라우드 동기. CAPTCHA는 4지선다 수식 합.</td><td>S03·S25·S27</td></tr>
+        <tr><td>D35</td><td>상품 타입</td><td>반나절·종일·1박2일·2박3일·3박4일·4박5일·5박6일·장기(8일+) <strong>8종</strong>. 장기 모드는 7일 단위 묶음 표시.</td><td>S36</td></tr>
+        <tr><td>D36</td><td>인원 유형 2모드</td><td><strong>간단(성인 통합) / 상세(성인·청소년·유아 체크박스)</strong>. 청소년 0.5 · 유아 0.0 가중치 기본. 사용자 라이브러리에서 덮어쓰기 가능.</td><td>S36</td></tr>
+        <tr><td>D37</td><td>위치·동선·시간</td><td>각 장소 <strong>recommended_stay_min</strong> + 다음 장소까지 이동 시간 자동(좌표 거리 추정). 투어 명칭 사용자 직접 입력.</td><td>S31</td></tr>
+        <tr><td>D38</td><td>마진·수수료 분리</td><td>STEP A(내가 정한 이익 net+retail) · STEP B(채널 수수료) 분리. <strong>5채널</strong>: 자체오프라인·자체온라인·B2B도매·B2B리테일·B2B에이전트.</td><td>S35</td></tr>
+        <tr><td>D39</td><td>차량 11종 + DG</td><td>VAN 6/11~12/15인승 + BUS 25/30/35/40/45인승 + DG(통역안내사 드라이빙) 3종. <strong>등급 차원 제거</strong>. 차량비 = 차량+유류+주차+톨비+기사팁(식사 포함).</td><td>S39·S41·S42</td></tr>
+        <tr><td>D40</td><td>가이드 5권역</td><td>구미주(영어)·일본·중국·대만·기타(직접 작성). <strong>language_region enum + custom_language</strong>. 등급 차원 유지 (관광통역안내사·랜드오퍼레이터·시니어).</td><td>S39</td></tr>
+        <tr><td>D41</td><td>시즌 모델 갱신</td><td>월별(month_index) + 사용자 정의 기간(custom_periods JSONB). 4단계 peak/shoulder/off/holiday는 추천 프리셋만, <strong>사용자가 자유 정의</strong>.</td><td>S39</td></tr>
+        <tr><td>D42</td><td>카테고리 8 + 지불 3</td><td>대분류 8: 음식점(점심)·음식점(저녁)·액티비티·체험·관광지·입장료·쇼핑·기타. 항목당 <strong>3 지불 방식</strong>: 포함 금액 입력 / 무료 / 손님 개별 지불(자유관광).</td><td>S37</td></tr>
+        <tr><td>D43</td><td>BEP 통합 계산</td><td>STEP 9~14에 BEP 4종 + OTA 6사(Klook·Viator·GetYourGuide·KKday·Trip.com·Expedia) 비교 매트릭스. <strong>"몇 명부터 수익"</strong>이 핵심 결과 카드.</td><td>S41·S42</td></tr>
+        <tr><td>D44</td><td>5레벨 메모</td><td>PackageNote(패키지)·DayNote(Day)·ItemNote(항목)·VendorNote(거래처)·CustomerNote(고객). <strong>5 키-값 컬럼 또는 JSONB memos</strong>.</td><td>S40</td></tr>
+        <tr><td>D45</td><td>출력 10시트</td><td>엑셀 10시트(표지·요약·Day별·공통비용·개별비용·인원별 단가·채널 수익률·BEP·OTA 비교·메모). 통합 PDF 1+N+1+α 페이지. <strong>공유 6방식</strong>(URL·QR·매직링크·PDF·엑셀·인쇄).</td><td>S38</td></tr>
+        <tr><td>D46</td><td>AI 보고서</td><td>룰 베이스(STEP 14 결과 + 도메인 룰 8 카테고리) → 무료 시 Groq Free LLM(llama-3.1-70b) 1회 호출. <strong>대표 키만 워터트리 보유</strong>, 사용자에 무료 노출.</td><td>S26·S39</td></tr>
+        <tr><td>D47</td><td>보안 16 레이어</td><td>L1 HTTPS · L2 헤더 · L3 RLS · L4 미들웨어 · L5 CAPTCHA · L6 Rate-limit · L7 Magic Link · L8 토큰 회전 · L9 환경변수 분리 · L10 입력 zod · L11 출력 escape · L12 audit_log · L13 K-PIPA 동의 · L14 삭제권 · L15 백업 · L16 사고 대응. <strong>fail-closed</strong>.</td><td>S27</td></tr>
+        <tr><td>D48</td><td>메인 컬러</td><td>Hot Coral <strong>#FC2D59</strong> + Teal <strong>#00BCB0</strong>. Tailwind v4 <code>@theme</code> 토큰: coral-500·teal-500 + 5단계 음영. 파스텔 폐기.</td><td>S33</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 style="margin-top:32px;color:#FC2D59">H. v2.1 PATCH 결정 (D49~D51 · 2단계 분리 + 캘린더 + 휴무일)</h3>
+    <p style="color:var(--ink-600);font-size:13px;margin-top:-6px">2026-05-18 대표 통찰 3차 압축. 디자인기획서 S43 신설. v2.0 STEP 6 마진 단일 단계 → 1단계(원가)·2단계(캠페인) 분리. 차량 대수 자동 산출. 마진율은 참고이고 진짜 결과는 캠페인 시뮬레이션.</p>
+    <div class="tbl-wrap"><table class="decision-table">
+      <thead><tr><th>#</th><th>주제</th><th>결정</th><th>출처</th></tr></thead>
+      <tbody>
+        <tr><td>D49</td><td>2단계 분리 + 차량 대수 자동</td><td><strong>1단계 = 1인 원가표(마진 0) / 2단계 = 판매 캠페인 시뮬레이션</strong>. 차량은 인승 종류만 선택, 대수는 <code>ceil(인원/인승)</code> 자동(80명 + 45인승 → 2대). 1대당 가이드 1명·DG 1명 동시 산출.</td><td>S43 본문</td></tr>
+        <tr><td>D50</td><td>판매 목표 인원 + 캘린더·요일</td><td>2단계 핵심 입력 = <strong>판매 목표 인원</strong>(누적). 매트릭스는 참고용. 운영 기간은 <strong>주간 요일 패턴(예: 수·목·금)</strong> + <strong>월간 캘린더</strong>로 출발 횟수 자동 산출. user_packages.campaign_scenarios JSONB에 저장.</td><td>S43 모듈 A·B</td></tr>
+        <tr><td>D51</td><td>휴무일 스마트 필터 (포함·제외)</td><td>휴무일 토글 1개로 캘린더 자동 반영. 제외(기본) = 공휴일 출발 취소. 포함(특수) = 휴일 강행 + 차량·가이드 단가 ×1.2 자동. 데이터는 <strong>공공데이터포털 data.go.kr 특일 정보 API(무료)</strong> + user_library.holiday 사용자 정의(고객 본국 휴일 등).</td><td>S43 모듈 C</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ============ S03 사용자·접근 모델 ============ -->
+  <section id="s03">
+    <div class="sec-head"><span class="sec-num">S03</span><h2 class="sec-title">사용자·접근 모델</h2><span class="sec-kicker">USER MODEL</span></div>
+
+    <h3>두 종류의 사용자만 존재</h3>
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">PUBLIC</div>
+        <div class="card-title">비로그인 사용자 (누구나)</div>
+        <div class="card-body">
+          한국 인바운드 여행사 기획자·가이드. 사이트 접속 즉시 단가 계산 가능. 로그인·가입 UI 부재. 데이터는 본인 브라우저 localStorage에만. 마스터 데이터(차량·가이드·관광지·시즌)는 Supabase에서 read-only로 조회. URL 해시 공유로 동료에게 견적 전달.
+        </div>
+      </div>
+      <div class="card card-gold">
+        <div class="card-label">ADMIN</div>
+        <div class="card-title">super-admin (대표 1명)</div>
+        <div class="card-body">
+          /admin 라우트로 진입. Email+Password 로그인. Supabase Studio에서 계정 직접 생성 (가입 UI 없음). 마스터 데이터(차량 단가·가이드 일당·시즌·관광지·포함템플릿) 전체 CRUD. 시스템 통계 조회.
+        </div>
+      </div>
+    </div>
+
+    <h3>접근 매트릭스</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>리소스</th><th>비로그인 (anon)</th><th>super-admin</th><th>RLS 정책</th></tr></thead>
+      <tbody>
+        <tr><td>vehicle_pricing</td><td>SELECT</td><td>SELECT/INSERT/UPDATE/DELETE</td><td>anon SELECT · super-admin ALL</td></tr>
+        <tr><td>guide_pricing</td><td>SELECT</td><td>ALL</td><td>anon SELECT · super-admin ALL</td></tr>
+        <tr><td>places</td><td>SELECT</td><td>ALL</td><td>anon SELECT · super-admin ALL</td></tr>
+        <tr><td>seasons</td><td>SELECT</td><td>ALL</td><td>anon SELECT · super-admin ALL</td></tr>
+        <tr><td>categories</td><td>SELECT</td><td>ALL</td><td>anon SELECT · super-admin ALL</td></tr>
+        <tr><td>inclusion_templates</td><td>SELECT</td><td>ALL</td><td>anon SELECT · super-admin ALL</td></tr>
+        <tr><td>age_tier_defaults</td><td>SELECT</td><td>ALL</td><td>anon SELECT · super-admin ALL</td></tr>
+        <tr><td>system_settings</td><td>SELECT</td><td>ALL</td><td>anon SELECT · super-admin ALL</td></tr>
+        <tr><td>ad_slots</td><td>SELECT (active=true만)</td><td>ALL</td><td>anon SELECT WHERE active · super-admin ALL</td></tr>
+        <tr><td>audit_log</td><td>접근 불가</td><td>SELECT</td><td>super-admin SELECT only</td></tr>
+        <tr><td>admin_users</td><td>접근 불가</td><td>SELECT (본인)</td><td>auth.uid()=id only</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>가입·인증 UI 부재 의도</h3>
+    <ul>
+      <li>사용자가 회원가입을 시도할 경로 자체가 없다. 회원가입·비밀번호 재설정 라우트 미배포.</li>
+      <li>/admin 라우트는 미들웨어로 보호. <code>auth.uid()</code>가 <code>admin_users</code>에 없으면 404 응답 (401 아님 — admin 존재 자체를 숨김).</li>
+      <li>대표 본인이 비밀번호 분실 시 Supabase Studio에서 직접 재설정.</li>
+      <li>Phase 1에서 일반 회원 도입 시점에 가입·로그인 UI 신설 + 약관·개인정보처리방침 동시 배포.</li>
+    </ul>
+
+    <div class="callout callout-blue">
+      <div class="callout-title">왜 이 모델인가</div>
+      <p style="margin:0">대표 통찰 — "단가 계산은 로그인 없이 화면에서 하는 것이고, CMS는 나만 보면 된다." 이 한 마디로 약관·개인정보 수집·승인 워크플로·역할 매트릭스·이메일 인프라가 모두 Phase 1 이후로 미뤄졌다. Phase 0 구현 분량 체감 30~40% 감소. Karpathy 2원칙(Simplicity First) 완벽 부합.</p>
+    </div>
+  </section>
+
+  <!-- ============ S04 시스템 아키텍처 ============ -->
+  <section id="s04">
+    <div class="sec-head"><span class="sec-num">S04</span><h2 class="sec-title">시스템 아키텍처</h2><span class="sec-kicker">ARCHITECTURE</span></div>
+
+    <h3>전체 다이어그램</h3>
+    <div class="wire">  ┌────────────────────────────────────────────────────────────────┐
+  │  CLIENT (Browser · PWA installable)                            │
+  │  ┌──────────────────────────┐   ┌──────────────────────────┐  │
+  │  │  공개 페이지             │   │  /admin (보호됨)         │  │
+  │  │  · / (랜딩)              │   │  · /admin/login          │  │
+  │  │  · /builder (빌더)       │   │  · /admin (대시보드)     │  │
+  │  │  · /result (결과)        │   │  · /admin/vehicles       │  │
+  │  │  · /share/[hash]         │   │  · /admin/guides         │  │
+  │  │                          │   │  · /admin/places         │  │
+  │  │  ▶ localStorage (zustand) │   │  · /admin/seasons        │  │
+  │  │  ▶ Service Worker 캐시   │   │  · /admin/settings       │  │
+  │  └──────────────────────────┘   └──────────────────────────┘  │
+  │                  │                          │                  │
+  │                  └─────────┬────────────────┘                  │
+  │                            │ HTTPS                             │
+  └────────────────────────────┼──────────────────────────────────┘
+                               │
+  ┌────────────────────────────▼──────────────────────────────────┐
+  │  VERCEL (Hobby Free)                                          │
+  │  Next.js latest · App Router · Edge + Node Runtime            │
+  │  · Server Components (SSR/SSG)                                │
+  │  · Route Handlers (/api/*)                                    │
+  │  · Middleware (admin 보호)                                    │
+  │  · @serwist/next v9 PWA                                       │
+  └────────────────────────────┬──────────────────────────────────┘
+                               │ Postgres Wire / REST / Realtime
+  ┌────────────────────────────▼──────────────────────────────────┐
+  │  SUPABASE (Free · ap-northeast-2 Seoul)                       │
+  │  · Auth (super-admin 1계정만)                                  │
+  │  · Postgres + RLS (마스터 데이터 read-public)                  │
+  │  · Storage (사용자 업로드 사진 — Phase 1)                      │
+  │  · Realtime (Phase 1+)                                        │
+  └───────────────────────────────────────────────────────────────┘</div>
+
+    <h3>주요 호출 경로</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>시나리오</th><th>경로</th><th>응답 시간 목표</th></tr></thead>
+      <tbody>
+        <tr><td>최초 랜딩</td><td>Vercel Edge SSR + ISR (1시간 revalidate)</td><td>FCP &lt; 1.5s</td></tr>
+        <tr><td>마스터 데이터 조회</td><td>Service Worker 캐시 → 만료 시 Supabase REST</td><td>캐시 히트 &lt; 50ms / 미스 &lt; 500ms</td></tr>
+        <tr><td>단가 계산</td><td>클라이언트 단독 (서버 호출 없음)</td><td>&lt; 30ms (N=20 기준)</td></tr>
+        <tr><td>URL 해시 공유</td><td>lz-string 압축 → URL hash → 클라이언트 복원</td><td>&lt; 100ms</td></tr>
+        <tr><td>엑셀 다운로드</td><td>SheetJS 클라이언트 생성 → Blob 다운로드</td><td>&lt; 1.5s (Day 7일 기준)</td></tr>
+        <tr><td>PDF 출력</td><td>window.print() 트리거 → 브라우저 다이얼로그</td><td>즉시</td></tr>
+        <tr><td>/admin 진입</td><td>Middleware 인증 검사 → Supabase Auth → admin_users 조회</td><td>&lt; 800ms</td></tr>
+        <tr><td>마스터 데이터 편집</td><td>/admin/* → Supabase REST (POST/PATCH/DELETE)</td><td>&lt; 600ms</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>저장 위치 분리 (Single Source of Truth)</h3>
+    <div class="metric-split">
+      <div class="metric-box">
+        <h5>Supabase Postgres (서버)</h5>
+        <ul>
+          <li>차량 단가 마스터</li>
+          <li>가이드 단가 마스터</li>
+          <li>관광지·식당·공연 (places)</li>
+          <li>시즌 정의</li>
+          <li>카테고리·아이콘</li>
+          <li>포함·불포함 템플릿</li>
+          <li>연령대 가중치 기본값</li>
+          <li>시스템 설정 (VAT·환율·기본 마진)</li>
+          <li>광고 슬롯 (Phase 2 자리)</li>
+          <li>관리자 감사 로그</li>
+        </ul>
+      </div>
+      <div class="metric-box">
+        <h5>브라우저 localStorage (클라이언트)</h5>
+        <ul>
+          <li>현재 작업 중인 패키지 (자동 저장)</li>
+          <li>최근 작업한 패키지 5개 (히스토리)</li>
+          <li>사용자 UI 설정 (사이드바 펼침 여부 등)</li>
+          <li>마지막 사용 환율 (수동 갱신값)</li>
+          <li>마지막 사용 마진율 (사용자 조정)</li>
+          <li>최근 조회한 관광지 (캐시 우선순위 hint)</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Service Worker 캐시 전략</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>리소스</th><th>전략</th><th>TTL</th><th>오프라인 fallback</th></tr></thead>
+      <tbody>
+        <tr><td>HTML 페이지</td><td>Network First</td><td>—</td><td>오프라인 페이지 표시</td></tr>
+        <tr><td>JS/CSS 번들</td><td>Cache First (해시 파일명)</td><td>1년</td><td>캐시 사용</td></tr>
+        <tr><td>폰트 (Google Fonts)</td><td>Cache First</td><td>1년</td><td>system font fallback</td></tr>
+        <tr><td>마스터 데이터 (Supabase REST)</td><td>Stale-While-Revalidate</td><td>24시간</td><td>오래된 캐시 사용</td></tr>
+        <tr><td>이미지</td><td>Cache First</td><td>30일</td><td>플레이스홀더</td></tr>
+        <tr><td>/admin/* 라우트</td><td>Network Only</td><td>—</td><td>오프라인 알림</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ============ S05 데이터 모델 DDL ============ -->
+  <section id="s05">
+    <div class="sec-head"><span class="sec-num">S05</span><h2 class="sec-title">데이터 모델 (Postgres DDL) v2.0</h2><span class="sec-kicker">SCHEMA</span></div>
+
+    <p>v2.0 본질 재정의(User-Owned · CMS Minimal) 반영. Phase 0 <strong>운영 핵심 7 테이블</strong>(admin_users · system_settings · audit_log · sales_channels · ad_slots · inclusion_templates · age_tier_defaults) + <strong>사용자 라이브러리 2 테이블</strong>(user_library · user_packages) + 시드 데이터(vehicles·guides·places·seasons·categories)는 마스터가 아닌 <strong>사용자 라이브러리 초기 프리셋</strong>으로 user_library에 JSONB로 import. Supabase CLI 마이그레이션. 표준 컬럼: <code>id uuid default gen_random_uuid()</code>, <code>created_at timestamptz default now()</code>, <code>updated_at timestamptz default now()</code>.</p>
+
+    <div class="callout callout-teal">
+      <div class="callout-title" style="color:#FC2D59">★ v1.0 대비 변경 (D33 본질 재정의)</div>
+      <ul style="margin:6px 0 0;line-height:1.85">
+        <li><strong>마스터 9 테이블 → 사용자 라이브러리 2 테이블로 흡수</strong> — vehicle_pricing·guide_pricing·places·seasons·categories·inclusion_templates·age_tier_defaults 등을 user_library 단일 테이블 JSONB로 통합 가능. 워터트리 직접 관리 마스터는 폐기.</li>
+        <li><strong>신규 user_library</strong> — 사용자별 차량·가이드·관광지·시즌·카테고리 컬렉션. Magic Link 인증 시 클라우드 동기, 비로그인 시 localStorage.</li>
+        <li><strong>신규 user_packages</strong> — 사용자별 견적·일정 패키지 저장(공유 토큰 포함).</li>
+        <li><strong>vehicle_pricing 컬럼 갱신</strong> — grade 제거, fuel_fee·parking_fee·toll_fee·driver_tip·driving_guide_flag 추가 (시드 프리셋용).</li>
+        <li><strong>guide_pricing 컬럼 갱신</strong> — language_region(5권역) + custom_language 추가.</li>
+        <li><strong>seasons 컬럼 갱신</strong> — month_index(int) + custom_periods(jsonb) 추가.</li>
+        <li><strong>places 컬럼 추가</strong> — recommended_stay_min, payment_type('included','free','customer-paid').</li>
+      </ul>
+    </div>
+
+    <h3>① admin_users — 관리자 계정 매핑</h3>
+    <div class="ddl-block">
+<pre><code><span class="tok-key">create table</span> admin_users (
+  id          <span class="tok-typ">uuid</span> <span class="tok-key">primary key references</span> auth.users(id) <span class="tok-key">on delete cascade</span>,
+  email       <span class="tok-typ">text</span> <span class="tok-key">not null unique</span>,
+  display_name <span class="tok-typ">text</span>,
+  role        <span class="tok-typ">text</span> <span class="tok-key">not null default</span> <span class="tok-str">'super-admin'</span>
+              <span class="tok-key">check</span> (role <span class="tok-key">in</span> (<span class="tok-str">'super-admin'</span>)),  <span class="tok-com">-- Phase 0은 단일 역할</span>
+  created_at  <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now()
+);
+<span class="tok-com">-- Phase 0 시드: 대표 1명만 Supabase Studio에서 직접 insert</span></code></pre>
+    </div>
+
+    <h3>② vehicle_pricing — 차량 단가</h3>
+    <div class="ddl-block">
+<pre><code><span class="tok-key">create table</span> vehicle_pricing (
+  id          <span class="tok-typ">uuid</span> <span class="tok-key">primary key default</span> gen_random_uuid(),
+  capacity    <span class="tok-typ">int</span> <span class="tok-key">not null check</span> (capacity <span class="tok-key">in</span> (<span class="tok-num">9</span>,<span class="tok-num">15</span>,<span class="tok-num">25</span>,<span class="tok-num">35</span>,<span class="tok-num">45</span>)),
+  daily_rate_krw <span class="tok-typ">int</span> <span class="tok-key">not null check</span> (daily_rate_krw &gt; <span class="tok-num">0</span>),
+  display_name   <span class="tok-typ">text</span> <span class="tok-key">not null</span>,           <span class="tok-com">-- "25인승" (등급 차원 제거 · D39)</span>
+  notes       <span class="tok-typ">text</span>,
+  is_active   <span class="tok-typ">bool</span> <span class="tok-key">not null default</span> true,
+  sort_order  <span class="tok-typ">int</span> <span class="tok-key">not null default</span> <span class="tok-num">0</span>,
+  created_at  <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now(),
+  updated_at  <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now(),
+  <span class="tok-key">unique</span>(capacity)
+);
+<span class="tok-key">create index</span> idx_vehicle_active <span class="tok-key">on</span> vehicle_pricing(is_active, sort_order);</code></pre>
+    </div>
+
+    <h3>③ guide_pricing — 가이드 단가</h3>
+    <div class="ddl-block">
+<pre><code><span class="tok-key">create table</span> guide_pricing (
+  id          <span class="tok-typ">uuid</span> <span class="tok-key">primary key default</span> gen_random_uuid(),
+  language    <span class="tok-typ">text</span> <span class="tok-key">not null</span>,    <span class="tok-com">-- 'ko','en','ja','zh','es','fr','de','ru',...</span>
+  grade       <span class="tok-typ">text</span> <span class="tok-key">not null check</span> (grade <span class="tok-key">in</span> (<span class="tok-str">'tour-guide'</span>,<span class="tok-str">'land-op'</span>,<span class="tok-str">'senior'</span>,<span class="tok-str">'premium'</span>)),
+  daily_rate_krw <span class="tok-typ">int</span> <span class="tok-key">not null check</span> (daily_rate_krw &gt; <span class="tok-num">0</span>),
+  display_name   <span class="tok-typ">text</span> <span class="tok-key">not null</span>,
+  notes       <span class="tok-typ">text</span>,
+  is_active   <span class="tok-typ">bool</span> <span class="tok-key">not null default</span> true,
+  sort_order  <span class="tok-typ">int</span> <span class="tok-key">not null default</span> <span class="tok-num">0</span>,
+  created_at  <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now(),
+  updated_at  <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now(),
+  <span class="tok-key">unique</span>(language, grade)
+);</code></pre>
+    </div>
+
+    <h3>④ categories — 항목 카테고리</h3>
+    <div class="ddl-block">
+<pre><code><span class="tok-key">create table</span> categories (
+  id          <span class="tok-typ">uuid</span> <span class="tok-key">primary key default</span> gen_random_uuid(),
+  slug        <span class="tok-typ">text</span> <span class="tok-key">not null unique</span>,    <span class="tok-com">-- 'meal','admission','show','vehicle','guide','transport'</span>
+  display_name <span class="tok-typ">text</span> <span class="tok-key">not null</span>,
+  icon_name   <span class="tok-typ">text</span>,                <span class="tok-com">-- lucide-react 아이콘 키</span>
+  cost_type   <span class="tok-typ">text</span> <span class="tok-key">not null check</span> (cost_type <span class="tok-key">in</span> (<span class="tok-str">'per-person'</span>,<span class="tok-str">'party-shared'</span>)),
+  sort_order  <span class="tok-typ">int</span> <span class="tok-key">default</span> <span class="tok-num">0</span>,
+  is_active   <span class="tok-typ">bool</span> <span class="tok-key">default</span> true
+);</code></pre>
+    </div>
+
+    <h3>⑤ places — 관광지·식당·공연·호텔·쇼핑</h3>
+    <div class="ddl-block">
+<pre><code><span class="tok-key">create table</span> places (
+  id          <span class="tok-typ">uuid</span> <span class="tok-key">primary key default</span> gen_random_uuid(),
+  type        <span class="tok-typ">text</span> <span class="tok-key">not null check</span> (type <span class="tok-key">in</span> (<span class="tok-str">'sight'</span>,<span class="tok-str">'restaurant'</span>,<span class="tok-str">'show'</span>,<span class="tok-str">'hotel'</span>,<span class="tok-str">'shopping'</span>)),
+  name_ko     <span class="tok-typ">text</span> <span class="tok-key">not null</span>,
+  name_en     <span class="tok-typ">text</span>,
+  address     <span class="tok-typ">text</span>,
+  lat         <span class="tok-typ">numeric</span>(<span class="tok-num">10</span>,<span class="tok-num">7</span>),
+  lng         <span class="tok-typ">numeric</span>(<span class="tok-num">10</span>,<span class="tok-num">7</span>),
+  admission_adult_krw <span class="tok-typ">int</span> <span class="tok-key">default</span> <span class="tok-num">0</span>,
+  admission_child_krw <span class="tok-typ">int</span> <span class="tok-key">default</span> <span class="tok-num">0</span>,
+  admission_infant_krw <span class="tok-typ">int</span> <span class="tok-key">default</span> <span class="tok-num">0</span>,
+  admission_senior_krw <span class="tok-typ">int</span> <span class="tok-key">default</span> <span class="tok-num">0</span>,
+  operating_hours <span class="tok-typ">text</span>,
+  closed_days <span class="tok-typ">text</span>,                <span class="tok-com">-- 'monday','tuesday',...,쉼표구분</span>
+  description <span class="tok-typ">text</span>,
+  memo        <span class="tok-typ">text</span>,
+  tags        <span class="tok-typ">text</span>[],
+  is_active   <span class="tok-typ">bool</span> <span class="tok-key">default</span> true,
+  created_at  <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now(),
+  updated_at  <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now()
+);
+<span class="tok-key">create index</span> idx_places_type <span class="tok-key">on</span> places(type, is_active);
+<span class="tok-key">create index</span> idx_places_name_ko <span class="tok-key">on</span> places <span class="tok-key">using</span> gin (to_tsvector(<span class="tok-str">'simple'</span>, name_ko));</code></pre>
+    </div>
+
+    <h3>⑥ seasons — 시즌 정의</h3>
+    <div class="ddl-block">
+<pre><code><span class="tok-key">create table</span> seasons (
+  id          <span class="tok-typ">uuid</span> <span class="tok-key">primary key default</span> gen_random_uuid(),
+  season_type <span class="tok-typ">text</span> <span class="tok-key">not null check</span> (season_type <span class="tok-key">in</span> (<span class="tok-str">'peak'</span>,<span class="tok-str">'shoulder'</span>,<span class="tok-str">'off'</span>,<span class="tok-str">'holiday'</span>)),
+  multiplier  <span class="tok-typ">numeric</span>(<span class="tok-num">4</span>,<span class="tok-num">2</span>) <span class="tok-key">not null check</span> (multiplier &gt; <span class="tok-num">0</span>),  <span class="tok-com">-- 1.20 = 20% 할증</span>
+  start_date  <span class="tok-typ">date</span> <span class="tok-key">not null</span>,
+  end_date    <span class="tok-typ">date</span> <span class="tok-key">not null</span>,
+  display_name <span class="tok-typ">text</span> <span class="tok-key">not null</span>,        <span class="tok-com">-- '여름 성수기 2026'</span>
+  applies_to  <span class="tok-typ">text</span>[] <span class="tok-key">not null default</span> '{vehicle,guide,admission}',
+  notes       <span class="tok-typ">text</span>,
+  <span class="tok-key">check</span> (end_date &gt;= start_date)
+);</code></pre>
+    </div>
+
+    <h3>⑦ inclusion_templates · ⑧ age_tier_defaults · ⑨ system_settings · ⑩ ad_slots · ⑪ audit_log</h3>
+<pre><code><span class="tok-com">-- ⑦ 포함·불포함 템플릿 16개 (포함 8 + 불포함 8) 시드</span>
+<span class="tok-key">create table</span> inclusion_templates (
+  id          <span class="tok-typ">uuid</span> <span class="tok-key">primary key default</span> gen_random_uuid(),
+  list_type   <span class="tok-typ">text</span> <span class="tok-key">not null check</span> (list_type <span class="tok-key">in</span> (<span class="tok-str">'included'</span>,<span class="tok-str">'excluded'</span>)),
+  label_ko    <span class="tok-typ">text</span> <span class="tok-key">not null</span>,
+  label_en    <span class="tok-typ">text</span>,
+  sort_order  <span class="tok-typ">int</span> <span class="tok-key">default</span> <span class="tok-num">0</span>,
+  is_active   <span class="tok-typ">bool</span> <span class="tok-key">default</span> true
+);
+
+<span class="tok-com">-- ⑧ 연령대 가중치 (adult 1.00 · child 0.50 · infant 0.00 · senior 0.80)</span>
+<span class="tok-key">create table</span> age_tier_defaults (
+  id          <span class="tok-typ">uuid</span> <span class="tok-key">primary key default</span> gen_random_uuid(),
+  tier        <span class="tok-typ">text</span> <span class="tok-key">not null unique check</span> (tier <span class="tok-key">in</span> (<span class="tok-str">'adult'</span>,<span class="tok-str">'child'</span>,<span class="tok-str">'infant'</span>,<span class="tok-str">'senior'</span>)),
+  age_min     <span class="tok-typ">int</span> <span class="tok-key">not null</span>,
+  age_max     <span class="tok-typ">int</span>,
+  multiplier  <span class="tok-typ">numeric</span>(<span class="tok-num">3</span>,<span class="tok-num">2</span>) <span class="tok-key">not null</span>,
+  display_name <span class="tok-typ">text</span> <span class="tok-key">not null</span>
+);
+
+<span class="tok-com">-- ⑨ 시스템 전역 설정 (vat_rate · default_net_margin · default_retail_margin · krw_to_usd 등)</span>
+<span class="tok-key">create table</span> system_settings (
+  key         <span class="tok-typ">text</span> <span class="tok-key">primary key</span>,
+  value_json  <span class="tok-typ">jsonb</span> <span class="tok-key">not null</span>,
+  description <span class="tok-typ">text</span>,
+  updated_at  <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now()
+);
+
+<span class="tok-com">-- ⑩ Phase 2 광고 슬롯 자리 (Phase 0은 모두 active=false)</span>
+<span class="tok-key">create table</span> ad_slots (
+  id          <span class="tok-typ">uuid</span> <span class="tok-key">primary key default</span> gen_random_uuid(),
+  slot_name   <span class="tok-typ">text</span> <span class="tok-key">not null unique</span>,
+  ad_type     <span class="tok-typ">text</span> <span class="tok-key">not null check</span> (ad_type <span class="tok-key">in</span> (<span class="tok-str">'adsense'</span>,<span class="tok-str">'self'</span>,<span class="tok-str">'placeholder'</span>)),
+  payload     <span class="tok-typ">jsonb</span>,
+  active      <span class="tok-typ">bool</span> <span class="tok-key">default</span> false,
+  priority    <span class="tok-typ">int</span> <span class="tok-key">default</span> <span class="tok-num">0</span>
+);
+
+<span class="tok-com">-- ⑪ 관리자 작업 감사 로그 (90일 보관)</span>
+<span class="tok-key">create table</span> audit_log (
+  id          <span class="tok-typ">bigserial</span> <span class="tok-key">primary key</span>,
+  actor_id    <span class="tok-typ">uuid</span> <span class="tok-key">references</span> admin_users(id),
+  action      <span class="tok-typ">text</span> <span class="tok-key">not null</span>,
+  table_name  <span class="tok-typ">text</span> <span class="tok-key">not null</span>,
+  row_id      <span class="tok-typ">uuid</span>,
+  before_json <span class="tok-typ">jsonb</span>,
+  after_json  <span class="tok-typ">jsonb</span>,
+  created_at  <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now()
+);
+<span class="tok-key">create index</span> idx_audit_actor <span class="tok-key">on</span> audit_log(actor_id, created_at <span class="tok-key">desc</span>);</code></pre>
+
+    <h3>⑫ sales_channels — 판매 채널·수수료 마스터 ★ (Phase 0 필수 · 2026-05-17 추가)</h3>
+    <div class="ddl-block">
+<pre><code><span class="tok-com">-- 자체(오프라인·온라인) · B2B(도매·소매·에이전트) 5채널 수수료를 한 테이블로 관리
+-- 인원수 변동에 따른 채널별 수익률 계산의 단가 입력</span>
+<span class="tok-key">create table</span> sales_channels (
+  id              <span class="tok-typ">uuid</span> <span class="tok-key">primary key default</span> gen_random_uuid(),
+  channel_code    <span class="tok-typ">text</span> <span class="tok-key">not null unique check</span> (channel_code <span class="tok-key">in</span>
+                    (<span class="tok-str">'self-offline'</span>, <span class="tok-str">'self-online'</span>,
+                     <span class="tok-str">'b2b-wholesale'</span>, <span class="tok-str">'b2b-retail'</span>, <span class="tok-str">'b2b-agent'</span>)),
+  display_name    <span class="tok-typ">text</span> <span class="tok-key">not null</span>,
+  channel_group   <span class="tok-typ">text</span> <span class="tok-key">not null check</span> (channel_group <span class="tok-key">in</span> (<span class="tok-str">'self'</span>, <span class="tok-str">'b2b'</span>)),
+
+  commission_rate <span class="tok-typ">numeric</span>(<span class="tok-num">5</span>,<span class="tok-num">4</span>) <span class="tok-key">not null default</span> <span class="tok-num">0</span>
+                  <span class="tok-key">check</span> (commission_rate &gt;= <span class="tok-num">0</span> <span class="tok-key">and</span> commission_rate &lt;= <span class="tok-num">1</span>),
+                  <span class="tok-com">-- 0.10 = 10% · B2B 도매 10·소매 15·에이전트 20</span>
+
+  card_fee_rate   <span class="tok-typ">numeric</span>(<span class="tok-num">5</span>,<span class="tok-num">4</span>) <span class="tok-key">not null default</span> <span class="tok-num">0</span>
+                  <span class="tok-key">check</span> (card_fee_rate &gt;= <span class="tok-num">0</span> <span class="tok-key">and</span> card_fee_rate &lt;= <span class="tok-num">0.1</span>),
+                  <span class="tok-com">-- 자체 온라인만 0.028 (PG사 평균 2.8%) · 그 외 0</span>
+
+  fixed_fee_krw   <span class="tok-typ">int</span> <span class="tok-key">not null default</span> <span class="tok-num">0</span>,
+                  <span class="tok-com">-- 건당 고정 수수료 (예: 카드 100원/건). 인원수에 비례하지 않음.</span>
+
+  notes           <span class="tok-typ">text</span>,
+  sort_order      <span class="tok-typ">int</span> <span class="tok-key">not null default</span> <span class="tok-num">0</span>,
+  is_active       <span class="tok-typ">bool</span> <span class="tok-key">not null default</span> true,
+  created_at      <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now(),
+  updated_at      <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now()
+);
+
+<span class="tok-com">-- Phase 0 시드 5건 (대표가 직접 조정 가능)</span>
+<span class="tok-key">insert into</span> sales_channels (channel_code, channel_group, display_name, commission_rate, card_fee_rate, sort_order) <span class="tok-key">values</span>
+  (<span class="tok-str">'self-offline'</span>,  <span class="tok-str">'self'</span>, <span class="tok-str">'자체 — 오프라인 (직판)'</span>,         <span class="tok-num">0.00</span>,  <span class="tok-num">0.000</span>, <span class="tok-num">10</span>),
+  (<span class="tok-str">'self-online'</span>,   <span class="tok-str">'self'</span>, <span class="tok-str">'자체 — 온라인 (카드 결제)'</span>,     <span class="tok-num">0.00</span>,  <span class="tok-num">0.028</span>, <span class="tok-num">20</span>),
+  (<span class="tok-str">'b2b-wholesale'</span>, <span class="tok-str">'b2b'</span>,  <span class="tok-str">'B2B — 도매 (DMC)'</span>,             <span class="tok-num">0.10</span>,  <span class="tok-num">0.000</span>, <span class="tok-num">30</span>),
+  (<span class="tok-str">'b2b-retail'</span>,    <span class="tok-str">'b2b'</span>,  <span class="tok-str">'B2B — 소매 (여행사)'</span>,           <span class="tok-num">0.15</span>,  <span class="tok-num">0.000</span>, <span class="tok-num">40</span>),
+  (<span class="tok-str">'b2b-agent'</span>,     <span class="tok-str">'b2b'</span>,  <span class="tok-str">'B2B — 에이전트 (개별 모집)'</span>,    <span class="tok-num">0.20</span>,  <span class="tok-num">0.000</span>, <span class="tok-num">50</span>);
+
+<span class="tok-key">create index</span> idx_channels_active <span class="tok-key">on</span> sales_channels(is_active, sort_order);</code></pre>
+    </div>
+
+    <h3 style="color:#FC2D59;margin-top:32px">⑬ user_library — 사용자 라이브러리 ★★ v2.0 신규 (D33·D34)</h3>
+    <div class="ddl-block">
+<pre><code><span class="tok-com">-- User-Owned 본질: 사용자가 자기 차량·가이드·관광지·시즌·카테고리 컬렉션을 직접 채움.
+-- 비로그인: localStorage에 미러링. Magic Link 인증 시 클라우드 동기.
+-- 차량·가이드·관광지·시즌·카테고리 데이터를 단일 테이블 + library_type 분기로 통합.</span>
+<span class="tok-key">create table</span> user_library (
+  id            <span class="tok-typ">uuid</span> <span class="tok-key">primary key default</span> gen_random_uuid(),
+  owner_id      <span class="tok-typ">uuid</span> <span class="tok-key">not null references</span> auth.users(id) <span class="tok-key">on delete cascade</span>,
+  library_type  <span class="tok-typ">text</span> <span class="tok-key">not null check</span> (library_type <span class="tok-key">in</span>
+                  (<span class="tok-str">'vehicle'</span>, <span class="tok-str">'guide'</span>, <span class="tok-str">'place'</span>, <span class="tok-str">'season'</span>,
+                   <span class="tok-str">'category'</span>, <span class="tok-str">'inclusion'</span>, <span class="tok-str">'channel'</span>)),
+  display_name  <span class="tok-typ">text</span> <span class="tok-key">not null</span>,
+  payload       <span class="tok-typ">jsonb</span> <span class="tok-key">not null</span>,        <span class="tok-com">-- 타입별 스키마는 zod 런타임 검증</span>
+  notes         <span class="tok-typ">text</span>,
+  sort_order    <span class="tok-typ">int</span> <span class="tok-key">not null default</span> <span class="tok-num">0</span>,
+  is_active     <span class="tok-typ">bool</span> <span class="tok-key">not null default</span> true,
+  created_at    <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now(),
+  updated_at    <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now()
+);
+<span class="tok-key">create index</span> idx_lib_owner_type <span class="tok-key">on</span> user_library(owner_id, library_type, is_active, sort_order);
+<span class="tok-key">create index</span> idx_lib_payload    <span class="tok-key">on</span> user_library <span class="tok-key">using</span> gin (payload);
+
+<span class="tok-com">-- payload JSONB 스키마 예시 (zod 검증):
+-- vehicle:  { capacity, fuel_fee, parking_fee, toll_fee, driver_tip,
+--             daily_rate_krw_total, driving_guide_flag, season_multipliers }
+-- guide:    { language_region, custom_language, grade, daily_rate_krw_total }
+-- place:    { type, name_ko, name_en, address, lat, lng,
+--             admission_per_tier, recommended_stay_min, payment_type,
+--             operating_hours, closed_days }
+-- season:   { season_type, month_index, custom_periods, multiplier, applies_to }
+-- category: { slug, display_name, icon_name, cost_type, payment_type }
+-- inclusion:{ list_type, label_ko, label_en }
+-- channel:  { channel_code, commission_rate, card_fee_rate, fixed_fee_krw } -- override
+-- 모든 금액 컬럼은 VAT 10% 포함 합계 (S20 규칙)</span></code></pre>
+    </div>
+
+    <h3 style="color:#FC2D59">⑭ user_packages — 사용자 견적 패키지 ★★ v2.0 신규 (D34·D45)</h3>
+    <div class="ddl-block">
+<pre><code><span class="tok-key">create table</span> user_packages (
+  id              <span class="tok-typ">uuid</span> <span class="tok-key">primary key default</span> gen_random_uuid(),
+  owner_id        <span class="tok-typ">uuid</span> <span class="tok-key">not null references</span> auth.users(id) <span class="tok-key">on delete cascade</span>,
+  product_name    <span class="tok-typ">text</span> <span class="tok-key">not null</span>,          <span class="tok-com">-- 사용자 입력 투어 명칭 (D37)</span>
+  product_type    <span class="tok-typ">text</span> <span class="tok-key">not null check</span> (product_type <span class="tok-key">in</span>
+                    (<span class="tok-str">'half-day'</span>, <span class="tok-str">'full-day'</span>, <span class="tok-str">'2d1n'</span>, <span class="tok-str">'3d2n'</span>,
+                     <span class="tok-str">'4d3n'</span>, <span class="tok-str">'5d4n'</span>, <span class="tok-str">'6d5n'</span>, <span class="tok-str">'longstay'</span>)),  <span class="tok-com">-- D35</span>
+  party_mode      <span class="tok-typ">text</span> <span class="tok-key">not null check</span> (party_mode <span class="tok-key">in</span> (<span class="tok-str">'simple'</span>, <span class="tok-str">'detailed'</span>)),
+  party_counts    <span class="tok-typ">jsonb</span> <span class="tok-key">not null</span>,   <span class="tok-com">-- { adult, youth, infant, senior }</span>
+  itinerary       <span class="tok-typ">jsonb</span> <span class="tok-key">not null</span>,   <span class="tok-com">-- Day[]: places, vehicle_id, guide_id, items, day_note</span>
+  channel_inputs  <span class="tok-typ">jsonb</span> <span class="tok-key">not null default</span> <span class="tok-str">'{}'</span>,  <span class="tok-com">-- channel 별 net·retail margin override</span>
+  memos           <span class="tok-typ">jsonb</span> <span class="tok-key">not null default</span> <span class="tok-str">'{}'</span>,
+                  <span class="tok-com">-- 5레벨 메모 (D44): { packageNote, dayNotes, itemNotes, vendorNotes, customerNotes }</span>
+  computed_cache  <span class="tok-typ">jsonb</span>,    <span class="tok-com">-- STEP 14 결과 캐시 (VAT 포함 합계 기준)</span>
+  share_token     <span class="tok-typ">text</span> <span class="tok-key">unique</span>,   <span class="tok-com">-- 공유 URL 토큰 (lz-string 압축 해시 또는 nanoid)</span>
+  share_expires_at <span class="tok-typ">timestamptz</span>,
+  is_archived     <span class="tok-typ">bool</span> <span class="tok-key">not null default</span> false,
+  created_at      <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now(),
+  updated_at      <span class="tok-typ">timestamptz</span> <span class="tok-key">default</span> now()
+);
+<span class="tok-key">create index</span> idx_pkg_owner    <span class="tok-key">on</span> user_packages(owner_id, created_at <span class="tok-key">desc</span>);
+<span class="tok-key">create index</span> idx_pkg_share    <span class="tok-key">on</span> user_packages(share_token) <span class="tok-key">where</span> share_token <span class="tok-key">is not null</span>;
+<span class="tok-key">create index</span> idx_pkg_memos    <span class="tok-key">on</span> user_packages <span class="tok-key">using</span> gin (memos);</code></pre>
+    </div>
+
+    <h3>⑮~⑰ Phase 1·2 자리 (구현 보류, 스키마만 검토)</h3>
+    <ul>
+      <li><strong>users_profile</strong> — Phase 1 사용자 부가 정보(회사명·연락처·국가). auth.users 확장.</li>
+      <li><strong>vendors</strong> — Phase 1 공급업체 실명 연락처. user_library 내 vendor 타입으로 흡수 가능성 검토.</li>
+      <li><strong>subscriptions</strong> — Phase 2 유료 플랜. 결제·쿠폰 테이블 동시 도입.</li>
+    </ul>
+
+    <div class="callout">
+      <div class="callout-title">Phase 0에서 의도적으로 빠진 것 (v2.0 갱신)</div>
+      <ul style="margin:0">
+        <li>비로그인 사용자 데이터는 서버에 0건 저장 (localStorage 단독) → 개인정보 0건 → 약관 최소.</li>
+        <li>회사·조직(organization) 개념 없음 → 멀티테넌시 RLS 정책은 owner_id 단일 축.</li>
+        <li>결제·구독·쿠폰 테이블 없음 → Phase 2에 일괄 추가.</li>
+        <li>워터트리 직접 관리 마스터 차량·가이드·관광지 없음 → 사용자 라이브러리로 분산 (D33).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ S06 RLS 정책 ============ -->
+  <section id="s06">
+    <div class="sec-head"><span class="sec-num">S06</span><h2 class="sec-title">RLS·권한 정책</h2><span class="sec-kicker">SECURITY</span></div>
+
+    <p>모든 테이블에 RLS를 활성화한다. Phase 0 정책은 본질적으로 단 두 줄: <strong>마스터 테이블은 anon에게 SELECT 허용, write는 super-admin만</strong>.</p>
+
+    <h3>공통 헬퍼 함수</h3>
+<pre><code><span class="tok-key">create function</span> is_super_admin() <span class="tok-key">returns</span> <span class="tok-typ">bool</span>
+<span class="tok-key">language</span> sql <span class="tok-key">security definer</span> <span class="tok-key">stable</span> <span class="tok-key">as</span> $$
+  <span class="tok-key">select exists</span> (
+    <span class="tok-key">select</span> <span class="tok-num">1</span> <span class="tok-key">from</span> admin_users
+    <span class="tok-key">where</span> id = auth.uid() <span class="tok-key">and</span> role = <span class="tok-str">'super-admin'</span>
+  );
+$$;</code></pre>
+
+    <h3>마스터 테이블 (vehicle_pricing 예시 — 나머지 동일 패턴)</h3>
+<pre><code><span class="tok-key">alter table</span> vehicle_pricing <span class="tok-key">enable row level security</span>;
+
+<span class="tok-key">create policy</span> <span class="tok-str">"anon read active"</span> <span class="tok-key">on</span> vehicle_pricing
+  <span class="tok-key">for select to</span> anon, authenticated
+  <span class="tok-key">using</span> (is_active = true);
+
+<span class="tok-key">create policy</span> <span class="tok-str">"admin all"</span> <span class="tok-key">on</span> vehicle_pricing
+  <span class="tok-key">for all to</span> authenticated
+  <span class="tok-key">using</span> (is_super_admin())
+  <span class="tok-key">with check</span> (is_super_admin());</code></pre>
+
+    <h3>접근 차단 테이블</h3>
+<pre><code><span class="tok-com">-- admin_users: 본인만 자기 행 조회</span>
+<span class="tok-key">alter table</span> admin_users <span class="tok-key">enable row level security</span>;
+<span class="tok-key">create policy</span> <span class="tok-str">"self only"</span> <span class="tok-key">on</span> admin_users
+  <span class="tok-key">for select to</span> authenticated <span class="tok-key">using</span> (id = auth.uid());
+
+<span class="tok-com">-- audit_log: super-admin만 SELECT, INSERT는 서버 트리거만</span>
+<span class="tok-key">alter table</span> audit_log <span class="tok-key">enable row level security</span>;
+<span class="tok-key">create policy</span> <span class="tok-str">"admin read"</span> <span class="tok-key">on</span> audit_log
+  <span class="tok-key">for select to</span> authenticated <span class="tok-key">using</span> (is_super_admin());</code></pre>
+
+    <h3>감사 트리거 (모든 마스터 테이블 공통)</h3>
+<pre><code><span class="tok-key">create function</span> log_admin_change() <span class="tok-key">returns trigger</span>
+<span class="tok-key">language</span> plpgsql <span class="tok-key">security definer</span> <span class="tok-key">as</span> $$
+<span class="tok-key">begin</span>
+  <span class="tok-key">insert into</span> audit_log(actor_id, action, table_name, row_id, before_json, after_json)
+  <span class="tok-key">values</span>(
+    auth.uid(), TG_OP, TG_TABLE_NAME,
+    <span class="tok-key">coalesce</span>(NEW.id, OLD.id),
+    <span class="tok-key">case when</span> TG_OP = <span class="tok-str">'INSERT'</span> <span class="tok-key">then null else</span> to_jsonb(OLD) <span class="tok-key">end</span>,
+    <span class="tok-key">case when</span> TG_OP = <span class="tok-str">'DELETE'</span> <span class="tok-key">then null else</span> to_jsonb(NEW) <span class="tok-key">end</span>
+  );
+  <span class="tok-key">return coalesce</span>(NEW, OLD);
+<span class="tok-key">end</span>; $$;
+
+<span class="tok-key">create trigger</span> trg_audit_vehicle <span class="tok-key">after insert or update or delete on</span> vehicle_pricing
+  <span class="tok-key">for each row execute function</span> log_admin_change();
+<span class="tok-com">-- 동일 패턴: guide_pricing, places, seasons, categories, inclusion_templates, system_settings, ad_slots</span></code></pre>
+
+    <h3>키 관리</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>키</th><th>저장 위치</th><th>노출 경계</th></tr></thead>
+      <tbody>
+        <tr><td>NEXT_PUBLIC_SUPABASE_URL</td><td>Vercel Public ENV</td><td>클라이언트·서버 양쪽</td></tr>
+        <tr><td>NEXT_PUBLIC_SUPABASE_ANON_KEY</td><td>Vercel Public ENV</td><td>클라이언트·서버 양쪽</td></tr>
+        <tr><td><strong>SUPABASE_SERVICE_ROLE</strong></td><td>Vercel Server-Only ENV</td><td><strong>서버 라우트 전용</strong> · 클라이언트 노출 금지</td></tr>
+        <tr><td>NEXT_PUBLIC_APP_URL</td><td>Vercel Public ENV</td><td>양쪽 (메타 OG·canonical)</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="callout callout-red">
+      <div class="callout-title">RLS 정책 회귀 방지</div>
+      <ul style="margin:0">
+        <li>모든 마이그레이션에서 <code>alter table … enable row level security</code> 누락 시 CI 거부.</li>
+        <li>RLS 활성화된 테이블에 정책이 0개면 모든 쿼리가 거부됨 → 빈 응답을 받으면 "권한 없음"이 아닐 수 있다 (Supabase의 알려진 함정).</li>
+        <li>Vitest 통합 테스트로 anon 클라이언트와 service-role 클라이언트 양쪽 응답 비교.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ S07 단가 계산 로직 ============ -->
+  <section id="s07">
+    <div class="sec-head"><span class="sec-num">S07</span><h2 class="sec-title">단가 계산 로직 v2.0 (STEP 14)</h2><span class="sec-kicker">CORE LOGIC</span></div>
+
+    <p>본 섹션이 제품의 본질. v2.0에서 <strong>STEP 8 → 14</strong>로 확장: 채널별 수수료(STEP 9~10), N별 매트릭스(STEP 11), BEP(STEP 12), <strong>BEP 통합 카드(STEP 13)</strong>, <strong>OTA 6사 비교(STEP 14)</strong>. 모든 출력 금액은 <strong>VAT 10% 포함 합계</strong>(S20). 모든 계산은 클라이언트 단독, 서버 호출 0.</p>
+
+    <div class="callout callout-teal">
+      <div class="callout-title" style="color:#FC2D59">★ v1.0 → v2.0 계산 로직 변경 (D38·D39·D43)</div>
+      <ul style="margin:6px 0 0;line-height:1.85">
+        <li><strong>DG(Driving Guide) 비용 모델 신규</strong> — 차량 + 통역안내사 + 식사 1식 통합 단가. <code>vehicleRent + (guideRate × 1.4 premium) + singleMeal</code>.</li>
+        <li><strong>차량비 5요소 분해</strong> — 차량+유류+주차+톨비+기사팁(식사 포함). 사용자가 user_library에서 각 요소 입력 → 합계 자동.</li>
+        <li><strong>인원 유형 2모드</strong> — simple(성인 통합) / detailed(성인·청소년·유아 체크박스). PartyMode 인터페이스.</li>
+        <li><strong>지불 방식 3종</strong> — included(포함 금액)·free(무료)·customer-paid(손님 개별). free·customer-paid 항목은 원가 0으로 계산 + 결과 메모에 표시.</li>
+        <li><strong>STEP 13 BEP 통합 카드</strong> — "몇 명부터 수익?" 한 줄 답변. 5채널 BEP를 카드 1개로 압축.</li>
+        <li><strong>STEP 14 OTA 6사 비교</strong> — Klook/Viator/GetYourGuide/KKday/Trip.com/Expedia 수수료(평균 25%·25%·25%·25%·22%·24%) 적용 시 1인당 순수익.</li>
+      </ul>
+    </div>
+
+    <h3>입력 모델 v2.0 (D35·D36·D39·D42 반영)</h3>
+<pre><code><span class="tok-key">type</span> <span class="tok-typ">ProductType</span> =        <span class="tok-com">// D35 — 8종</span>
+  | <span class="tok-str">'half-day'</span>      <span class="tok-com">// 반나절 (≤4h)</span>
+  | <span class="tok-str">'full-day'</span>      <span class="tok-com">// 종일 (당일)</span>
+  | <span class="tok-str">'2d1n'</span>          <span class="tok-com">// 1박 2일</span>
+  | <span class="tok-str">'3d2n'</span>          <span class="tok-com">// 2박 3일</span>
+  | <span class="tok-str">'4d3n'</span>          <span class="tok-com">// 3박 4일</span>
+  | <span class="tok-str">'5d4n'</span>          <span class="tok-com">// 4박 5일</span>
+  | <span class="tok-str">'6d5n'</span>          <span class="tok-com">// 5박 6일</span>
+  | <span class="tok-str">'longstay'</span>;     <span class="tok-com">// 장기 (8일+, 7일 단위 묶음 표시)</span>
+
+<span class="tok-key">type</span> <span class="tok-typ">PartyMode</span> = {       <span class="tok-com">// D36 — 인원 유형 2모드</span>
+  mode: <span class="tok-str">'simple'</span> | <span class="tok-str">'detailed'</span>;
+  tiers: {
+    adult:  { enabled: true,  count: <span class="tok-typ">number</span>, ageRange: <span class="tok-str">'12+'</span>,  multiplier: <span class="tok-num">1.00</span> };
+    youth:  { enabled: <span class="tok-typ">boolean</span>, count: <span class="tok-typ">number</span>, ageRange: <span class="tok-str">'3~11'</span>, multiplier: <span class="tok-num">0.50</span> };
+    infant: { enabled: <span class="tok-typ">boolean</span>, count: <span class="tok-typ">number</span>, ageRange: <span class="tok-str">'0~2'</span>,  multiplier: <span class="tok-num">0.00</span> };
+  };
+};
+
+<span class="tok-key">type</span> <span class="tok-typ">PaymentType</span> =       <span class="tok-com">// D42 — 항목 지불 방식</span>
+  | <span class="tok-str">'included'</span>       <span class="tok-com">// 단가 포함</span>
+  | <span class="tok-str">'free'</span>           <span class="tok-com">// 무료</span>
+  | <span class="tok-str">'customer-paid'</span>; <span class="tok-com">// 손님 개별 (자유관광)</span>
+
+<span class="tok-key">type</span> <span class="tok-typ">CalculationInput</span> = {
+  productType: <span class="tok-typ">ProductType</span>;
+  productName: <span class="tok-typ">string</span>;          <span class="tok-com">// D37 — 사용자 입력 투어 명칭</span>
+  durationHours?: <span class="tok-typ">number</span>;
+  nights?: <span class="tok-typ">number</span>;
+  party: <span class="tok-typ">PartyMode</span>;
+  days: <span class="tok-typ">DayPlan</span>[];
+  partyShared: <span class="tok-typ">PartyCost</span>[];      <span class="tok-com">// 차량·가이드·DG 공통 비용</span>
+  season: { multiplier: <span class="tok-typ">number</span>; appliesTo: <span class="tok-typ">string</span>[] };
+  margin: { net: <span class="tok-typ">number</span>; retail: <span class="tok-typ">number</span> };
+  vatRate: <span class="tok-typ">number</span>;
+  exchangeRate: { krwToUsd: <span class="tok-typ">number</span> };
+  showVatInclusive: <span class="tok-num">true</span>;        <span class="tok-com">// S20 — 항상 true (VAT 10% 포함 합계 표기)</span>
+};
+
+<span class="tok-key">type</span> <span class="tok-typ">DayPlan</span>      = { dayNumber: <span class="tok-typ">number</span>; items: <span class="tok-typ">PerPersonItem</span>[]; dayNote?: <span class="tok-typ">string</span> };
+<span class="tok-key">type</span> <span class="tok-typ">PerPersonItem</span> = {
+  categorySlug: <span class="tok-typ">string</span>;       <span class="tok-com">// D42 8 대분류</span>
+  placeId?: <span class="tok-typ">string</span>;
+  unitPriceKrw: <span class="tok-typ">number</span>;        <span class="tok-com">// VAT 10% 포함 합계로 입력</span>
+  applyAgeTier: <span class="tok-typ">boolean</span>;
+  paymentType: <span class="tok-typ">PaymentType</span>;    <span class="tok-com">// included | free | customer-paid</span>
+};
+<span class="tok-key">type</span> <span class="tok-typ">PartyCost</span> = {
+  categorySlug: <span class="tok-typ">string</span>;       <span class="tok-com">// 'vehicle' | 'guide' | 'driving-guide' | 'transport'</span>
+  totalKrw: <span class="tok-typ">number</span>;            <span class="tok-com">// VAT 포함 합계</span>
+  notes?: <span class="tok-typ">string</span>;
+};
+
+<span class="tok-com">// D39 — 차량비 5요소 분해 + DG 모델</span>
+<span class="tok-key">function</span> <span class="tok-typ">vehicleDailyCost</span>(v: <span class="tok-typ">VehicleSpec</span>): <span class="tok-typ">number</span> {
+  <span class="tok-key">return</span> v.rent + v.fuel + v.parking + v.toll + v.driverTip;  <span class="tok-com">// 모두 VAT 포함</span>
+}
+<span class="tok-key">function</span> <span class="tok-typ">drivingGuideDailyCost</span>(v: <span class="tok-typ">VehicleSpec</span>, lang: <span class="tok-typ">LangRegion</span>, grade: <span class="tok-typ">GuideGrade</span>): <span class="tok-typ">number</span> {
+  <span class="tok-key">const</span> vehicleBase  = v.rent;                                <span class="tok-com">// 차량 임차 본체</span>
+  <span class="tok-key">const</span> guideRate    = guideDailyRate(lang, grade) * <span class="tok-num">1.4</span>;    <span class="tok-com">// DG 프리미엄 +40%</span>
+  <span class="tok-key">const</span> singleMeal   = <span class="tok-num">30000</span>;                              <span class="tok-com">// 식사 1식 (VAT 포함)</span>
+  <span class="tok-key">return</span> vehicleBase + guideRate + singleMeal;
+}
+<span class="tok-com">// 예: FIT 1.4 프리미엄 → ₩220,000 + ₩280,000 + ₩30,000 = ₩530,000 (VAT 포함 합계)
+// 인원 1~6명 FIT 시장에서 가이드+운전기사 동시 채용 부담 회피하는 표준 상품.</span></code></pre>
+
+    <h3>계산식 (단계별)</h3>
+    <div class="formula">
+      <span class="lbl">STEP 1 — 가중 인원 (N_eff)</span>
+      <span class="op">N_eff</span> = adult × m_adult + child × m_child + infant × m_infant + senior × m_senior
+      <span class="com">// 예: 성인 18 + 소아 2 = 18×1.0 + 2×0.5 = 19.0</span>
+
+      <span class="lbl">STEP 2 — 시즌 보정</span>
+      <span class="op">seasonCost(category, cost)</span> = cost × (season.appliesTo.includes(category) ? season.multiplier : 1.0)
+
+      <span class="lbl">STEP 3 — 파티 공통 비용의 1인당 분배</span>
+      <span class="op">partySharedPerPerson</span> = Σ seasonCost(p.categorySlug, p.totalKrw) / N_total
+      <span class="com">// N_total = 실제 머릿수 (가중치 적용 전)</span>
+
+      <span class="lbl">STEP 4 — 연령별 인당 항목 합계</span>
+      <span class="op">perPersonItemsForTier(t)</span> = Σ seasonCost(item.cat, item.unitPriceKrw) × (item.applyAgeTier ? m_t : 1.0)
+
+      <span class="lbl">STEP 5 — Tier 원가</span>
+      <span class="op">tierCost(t)</span> = perPersonItemsForTier(t) + partySharedPerPerson
+
+      <span class="lbl">STEP 6 — 마진</span>
+      <span class="op">netPrice(t)</span>    = tierCost(t) × (1 + margin.net)
+      <span class="op">retailPrice(t)</span> = netPrice(t)  × (1 + margin.retail)
+
+      <span class="lbl">STEP 7 — VAT 적용 최종 1인당</span>
+      <span class="op">finalKrw(t)</span> = retailPrice(t) × (1 + vatRate)
+      <span class="op">finalUsd(t)</span> = finalKrw(t) × exchangeRate.krwToUsd
+
+      <span class="lbl">STEP 8 — 그룹 총액</span>
+      <span class="op">groupTotalKrw</span> = Σ_t (party[t] × finalKrw(t))
+
+      <span class="lbl">STEP 9 — 채널별 수수료 차감 (★ 2026-05-17 추가)</span>
+      <span class="op">channelFee(c)</span>      = finalKrw(adult) × c.commission_rate
+      <span class="op">cardFee(c)</span>         = finalKrw(adult) × c.card_fee_rate + c.fixed_fee_krw
+      <span class="op">netRevenuePerAdult(c)</span> = finalKrw(adult) − channelFee(c) − cardFee(c)
+      <span class="com">// 자체 오프라인: 수수료 0 · 자체 온라인: 카드 2.8% · B2B: 10~20%</span>
+
+      <span class="lbl">STEP 10 — 채널별 1인당 순수익·수익률</span>
+      <span class="op">profitPerAdult(c)</span>   = netRevenuePerAdult(c) − tierCost(adult)
+      <span class="op">profitRate(c)</span>       = profitPerAdult(c) / finalKrw(adult) × 100
+      <span class="com">// 수익률은 판매가 대비. tierCost 대비가 아님. 영업 관점 표준.</span>
+
+      <span class="lbl">STEP 11 — 인원 N별 수익 매트릭스 (★ What-if 핵심)</span>
+      <span class="op">forEach N in [5,10,15,20,25,30,35,40,45]:</span>
+        <span class="op">N_total'</span>             = N (실제 머릿수)
+        <span class="op">partyShared'</span>         = Σ partyShared (시즌 보정 적용) / N
+        <span class="op">tierCost'(adult)</span>     = perPersonItemsForTier(adult) + partyShared'
+        <span class="op">netRevenue'(c)</span>       = finalKrw(adult) × (1 − c.commission_rate − c.card_fee_rate) − fixed_fee
+        <span class="op">profitRate'(N, c)</span>    = (netRevenue'(c) − tierCost'(adult)) / finalKrw(adult) × 100
+      <span class="com">// 결과: 5 채널 × 9 인원 구간 = 45 셀 매트릭스</span>
+
+      <span class="lbl">STEP 12 — 손익분기점·의사결정 신호</span>
+      <span class="op">breakEvenN(c)</span>       = min N s.t. profitRate'(N, c) &gt;= 0
+      <span class="op">bestChannelAt(N)</span>    = argmax_c profitRate'(N, c)
+      <span class="op">marginalProfit(c)</span>   = profitRate'(N+5, c) − profitRate'(N, c)
+      <span class="com">// "5명 더 받으면 수익률 +N%p" 즉시 표시</span>
+
+      <span class="lbl">[v2.1 PATCH · D49] STEP 0 — 차량 대수 자동 산출 (1단계 진입)</span>
+      <span class="op">vehicleCount</span>  = ceil(party.total / vehicle.capacity)
+      <span class="op">guideCount</span>    = vehicleCount   <span class="com">// 1차량 1가이드</span>
+      <span class="op">dgCount</span>       = vehicleCount   <span class="com">// DG도 1대당 1명</span>
+      <span class="com">// 예: 80명 + 45인승 → vehicleCount=2, guideCount=2</span>
+      <span class="com">// 사용자가 차량 인승만 선택, 대수는 자동. 90% 초과 시 노란 경고, 100% 초과 불가.</span>
+
+      <span class="lbl">[v2.1 PATCH · D49] STEP 3' — partyShared 재계산 (대수 반영)</span>
+      <span class="op">partyShared</span>         = (vehicleCount × dailyVehicle) + (guideCount × dailyGuide)
+                              + (dgCount × dailyDg <span class="com">// DG 사용 시</span>)
+      <span class="op">perPersonShared</span>     = partyShared / party.total  <span class="com">// 실제 인원 분담</span>
+      <span class="com">// v2.0 STEP 3을 대체. 차량 대수가 1보다 클 때 자동 합산.</span>
+
+      <span class="lbl">[v2.1 PATCH · D49] 1단계 출력 — STEP 7 까지만, 마진 미적용</span>
+      <span class="op">costPerAdult</span>        = perPersonItemsForTier(adult) + perPersonShared  <span class="com">// VAT 포함 합계, 마진 0</span>
+      <span class="com">// 결과 화면 상단 카드: "1인당 원가 ₩XXX,XXX (VAT 10% 포함 합계 · 마진 0)"</span>
+      <span class="com">// 마진은 2단계 STEP M1~M5에서 시뮬레이션. STEP 6 v2.0 단일 마진은 폐기.</span>
+
+      <span class="lbl">[v2.1 PATCH · D50·D51] STEP M1 — 2단계 입력 (캠페인)</span>
+      <span class="op">campaignInput</span>       = {
+        priceByChannel:   { selfOffline, selfOnline, b2bWholesale, b2bRetail, b2bAgent, ota×6 },  <span class="com">// VAT 포함</span>
+        seasonsActive:    ['off','shoulder','peak','holiday'],  <span class="com">// 다중 선택</span>
+        dateRange:        { start: <span class="tok-str">'2026-06-01'</span>, end: <span class="tok-str">'2026-12-31'</span> },
+        departWeekdays:   [3, 4, 5],   <span class="com">// 0=일, ..., 6=토. 수·목·금</span>
+        excludeHolidays:  true,         <span class="com">// 휴무일 제외(기본) · false=포함(+20% 단가)</span>
+        targetPax:        2400          <span class="com">// 판매 목표 인원 누적 ★ 핵심 입력</span>
+      }
+
+      <span class="lbl">[v2.1 PATCH · D50] STEP M2 — 출발 횟수 자동 산출</span>
+      <span class="op">candidateDates</span>      = enumerate(dateRange, departWeekdays)
+      <span class="op">holidays</span>            = fetchHolidaysApi(dateRange) ∪ userLibrary.holidays  <span class="com">// data.go.kr</span>
+      <span class="op">validDates</span>          = excludeHolidays
+                              ? candidateDates − holidays
+                              : candidateDates
+      <span class="op">departCount</span>         = validDates.length
+      <span class="op">departBySeasonOf(s)</span>  = count(validDates where season(d) == s)
+
+      <span class="lbl">[v2.1 PATCH · D50] STEP M3 — 시즌별 예상 평균 예약 (사용자 시나리오)</span>
+      <span class="op">avgPaxBySeason</span>      = userInput {
+        off:        18,   shoulder:   24,
+        peak:       35,   holiday:    32
+      }  <span class="com">// 또는 AI 권고값 (인접 상품 데이터 기반)</span>
+
+      <span class="lbl">[v2.1 PATCH · D50] STEP M4 — 시즌×채널×인원 마진 매트릭스</span>
+      <span class="op">marginRate(s, c, n)</span>  = (price(c) − costPerAdult(n)) / price(c) × 100
+                              <span class="com">// costPerAdult(n)는 perPersonShared가 n에 따라 변동</span>
+      <span class="op">rowSeason(s)</span>         = matrix[s] = { 15, 20, 25, 30, 35, 40 } × marginRate(s, c, n)
+
+      <span class="lbl">[v2.1 PATCH · D50·D51] STEP M5 — 목표 인원 → 캠페인 누적 (★ 핵심 출력)</span>
+      <span class="op">avgPaxPerDepart</span>     = targetPax / departCount
+      <span class="op">seasonContribution(s)</span> = avgPaxBySeason[s] × departBySeasonOf(s) × marginRate(s, c, avgPaxBySeason[s])
+      <span class="op">cumulativeMargin</span>     = Σ_s seasonContribution(s) / Σ_s (avgPaxBySeason[s] × departBySeasonOf(s))
+      <span class="op">cumulativeRevenue</span>    = targetPax × weightedAvgPrice
+      <span class="op">missRiskPercent</span>      = max(0, (avgPaxPerDepart − avgAchievable) / avgAchievable × 100)
+      <span class="com">// 결과 카드: "캠페인 누적 매출 ₩528M · 마진 +15.8% · 목표 미달 가능성 17%"</span>
+      <span class="com">// AI 보고서: "1회당 24명 필요. 비수기 평균 18명 미달 위험. 판매가 5% 인하 + 시즌 추가 권고."</span>
+
+      <span class="lbl">STEP 13 — BEP 통합 카드 (★ v2.0 신규 · D43)</span>
+      <span class="op">bepSummary</span>          = {
+        selfOffline:   breakEvenN('self-offline'),     <span class="com">// 자체 오프 BEP</span>
+        selfOnline:    breakEvenN('self-online'),      <span class="com">// 자체 온라인 BEP</span>
+        b2bWholesale:  breakEvenN('b2b-wholesale'),    <span class="com">// B2B 도매 BEP</span>
+        b2bRetail:     breakEvenN('b2b-retail'),       <span class="com">// B2B 소매 BEP</span>
+        b2bAgent:      breakEvenN('b2b-agent'),        <span class="com">// B2B 에이전트 BEP</span>
+        bestMin:       min(bepSummary.values),         <span class="com">// "최소 N명부터 수익" 한 줄 답변</span>
+        worstMax:      max(bepSummary.values),         <span class="com">// "에이전트는 N명 채워야"</span>
+        recommend:     bestChannelAt(currentN)         <span class="com">// 현재 인원 기준 최적 채널</span>
+      }
+      <span class="com">// 결과 화면 최상단 카드 — "이 견적은 자체 오프 20명·온라인 25명·B2B 도매 30명부터 흑자"</span>
+
+      <span class="lbl">STEP 14 — OTA 6사 비교 매트릭스 (★ v2.0 신규 · D43)</span>
+      <span class="op">otaList</span>             = [
+        { code: 'klook',          name: 'Klook',          commission: 0.25 },
+        { code: 'viator',         name: 'Viator',         commission: 0.25 },
+        { code: 'getyourguide',   name: 'GetYourGuide',   commission: 0.25 },
+        { code: 'kkday',          name: 'KKday',          commission: 0.25 },
+        { code: 'tripcom',        name: 'Trip.com',       commission: 0.22 },
+        { code: 'expedia',        name: 'Expedia',        commission: 0.24 }
+      ]
+      <span class="op">otaNetPerAdult(ota)</span> = finalKrw(adult) × (1 − ota.commission)
+      <span class="op">otaProfitRate(ota)</span>  = (otaNetPerAdult(ota) − tierCost(adult)) / finalKrw(adult) × 100
+      <span class="op">otaBep(ota)</span>         = min N s.t. otaProfitRate'(N, ota) &gt;= 0
+      <span class="com">// 결과 화면 — "OTA로 팔면 평균 BEP 32~38명. 자체 직판 우위 12명".</span>
+      <span class="com">// 모든 ota 수수료는 사용자 라이브러리에서 협상가로 덮어쓰기 가능 (user_library.channel).</span>
+    </div>
+
+    <h3>검증 시나리오 (Vitest 단위 테스트 케이스)</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>케이스</th><th>입력</th><th>기대 출력</th></tr></thead>
+      <tbody>
+        <tr><td>기본 (기획서:1478)</td><td>N=20 (성인20), netMargin 12%, retailMargin 35%, VAT 10%</td><td>finalKrw(adult) = tierCost(adult) × 1.6632</td></tr>
+        <tr><td>소아 50%</td><td>성인 18 + 소아 2, applyAgeTier=true 항목 100원</td><td>perPersonItemsForTier(child) = 항목 합 × 0.5</td></tr>
+        <tr><td>유아 0원</td><td>infant 1명 추가, party shared 미포함 가정</td><td>finalKrw(infant) = partySharedPerPerson에만 비례</td></tr>
+        <tr><td>시즌 1.2배</td><td>season.multiplier=1.2, appliesTo=[vehicle,guide]</td><td>vehicle·guide만 ×1.2, 입장료 원가 유지</td></tr>
+        <tr><td>경계 N=1</td><td>성인 1명</td><td>partySharedPerPerson = 전체 파티 비용</td></tr>
+        <tr><td>경계 N_eff=0</td><td>유아 5명만</td><td>ZeroDivision 방지 (N_total은 5라 정상 분배)</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>What-if 시뮬레이션 (UI)</h3>
+    <p>핵심 가치 — "한 차량 더 큰 걸 쓰면 1인당 얼마 줄어드는가". 결과 화면에서 인원 슬라이더(±5명)와 차량 인승(9·15·25·35·45) 변경 시 즉시 재계산 표시.</p>
+
+    <h3>채널별 수익 타당성 매트릭스 (★ 2026-05-17 추가 — 5채널 × 9인원 = 45셀)</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>인원</th><th>1인당 원가</th><th>자체 오프</th><th>자체 온라인</th><th>B2B 도매</th><th>B2B 소매</th><th>B2B 에이전트</th></tr></thead>
+      <tbody>
+        <tr><td class="num">5</td><td class="num">288,300</td><td>−61.7%</td><td>−64.5%</td><td>−71.7%</td><td>−76.7%</td><td>−81.7%</td></tr>
+        <tr><td class="num">10</td><td class="num">228,150</td><td>−28.0%</td><td>−30.8%</td><td>−38.0%</td><td>−43.0%</td><td>−48.0%</td></tr>
+        <tr><td class="num">15</td><td class="num">208,100</td><td>−16.7%</td><td>−19.5%</td><td>−26.7%</td><td>−31.7%</td><td>−36.7%</td></tr>
+        <tr><td class="num">20</td><td class="num">178,250</td><td><strong style="color:#2d4a1c">+0.0%</strong></td><td>−2.8%</td><td>−10.0%</td><td>−15.0%</td><td>−20.0%</td></tr>
+        <tr><td class="num">25</td><td class="num">163,500</td><td><strong style="color:#2d4a1c">+8.3%</strong></td><td>+5.5%</td><td>−1.7%</td><td>−6.7%</td><td>−11.7%</td></tr>
+        <tr><td class="num">30</td><td class="num">153,650</td><td><strong style="color:#2d4a1c">+13.8%</strong></td><td><strong style="color:#2d4a1c">+11.0%</strong></td><td>+3.8%</td><td>−1.2%</td><td>−6.2%</td></tr>
+        <tr><td class="num">35</td><td class="num">146,620</td><td><strong style="color:#2d4a1c">+17.7%</strong></td><td><strong style="color:#2d4a1c">+14.9%</strong></td><td><strong style="color:#2d4a1c">+7.7%</strong></td><td>+2.7%</td><td>−2.3%</td></tr>
+        <tr><td class="num">40</td><td class="num">141,350</td><td><strong style="color:#2d4a1c">+20.7%</strong></td><td><strong style="color:#2d4a1c">+17.9%</strong></td><td><strong style="color:#2d4a1c">+10.7%</strong></td><td><strong style="color:#2d4a1c">+5.7%</strong></td><td>+0.7%</td></tr>
+        <tr><td class="num">45</td><td class="num">137,260</td><td><strong style="color:#2d4a1c">+23.0%</strong></td><td><strong style="color:#2d4a1c">+20.2%</strong></td><td><strong style="color:#2d4a1c">+13.0%</strong></td><td><strong style="color:#2d4a1c">+8.0%</strong></td><td><strong style="color:#2d4a1c">+3.0%</strong></td></tr>
+      </tbody>
+    </table></div>
+    <p style="font-size:12.5px;color:var(--ink-500);margin-top:10px">위 표는 1인당 판매가 ₩178,250 · 차량/가이드 파티 공통 비용 + 식사·입장 인당 항목 기준의 예시. 실제 값은 사용자 입력에 따라 자동 계산. 파란 음수는 손실, 초록 양수는 흑자.</p>
+
+    <h3>손익분기점·의사결정 신호</h3>
+    <ul>
+      <li><strong>자체 오프라인 BEP</strong>: 20명 (수수료 0) → 그 이하는 손실.</li>
+      <li><strong>자체 온라인 BEP</strong>: 25명 (카드 2.8% 부담).</li>
+      <li><strong>B2B 도매 BEP</strong>: 30명.</li>
+      <li><strong>B2B 소매 BEP</strong>: 35명.</li>
+      <li><strong>B2B 에이전트 BEP</strong>: 45명.</li>
+      <li><strong>"5명 더 받으면 +N%p"</strong> 한계 수익률을 카드로 강조 → 영업 협상 즉답.</li>
+    </ul>
+
+    <h3 style="color:#FC2D59">OTA 6사 비교 매트릭스 (★ v2.0 신규 — STEP 14 출력)</h3>
+    <p style="font-size:13px;color:var(--ink-600);margin-top:-4px">기준: 판매가 ₩178,250(VAT 포함) · 1인 원가 ₩178,250 × profitRate'. 수수료는 각 OTA 공시 평균 기반(사용자 라이브러리에서 협상가로 덮어쓰기 가능).</p>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>OTA</th><th>본사</th><th>수수료</th><th>인원 30명 수익률</th><th>BEP</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Klook</strong></td><td>홍콩</td><td class="num">25%</td><td class="num">−11.2%</td><td class="num">38명</td><td>아시아 1위. 한국 인바운드 영향력 큼.</td></tr>
+        <tr><td><strong>Viator</strong></td><td>미국 (TripAdvisor)</td><td class="num">25%</td><td class="num">−11.2%</td><td class="num">38명</td><td>구미주 트래픽. PDF 자동 발행.</td></tr>
+        <tr><td><strong>GetYourGuide</strong></td><td>독일 (베를린)</td><td class="num">25%</td><td class="num">−11.2%</td><td class="num">38명</td><td>유럽 1위. 모바일 UX 우수.</td></tr>
+        <tr><td><strong>KKday</strong></td><td>대만</td><td class="num">25%</td><td class="num">−11.2%</td><td class="num">38명</td><td>대만·일본 강세. 한국어 지원.</td></tr>
+        <tr><td><strong>Trip.com</strong></td><td>중국 (Ctrip)</td><td class="num">22%</td><td class="num">−8.2%</td><td class="num">34명</td><td>중국 시장 필수. 인민폐 결제.</td></tr>
+        <tr><td><strong>Expedia</strong></td><td>미국</td><td class="num">24%</td><td class="num">−10.2%</td><td class="num">36명</td><td>호텔 연계 강점. 패키지 묶음.</td></tr>
+      </tbody>
+    </table></div>
+    <p style="font-size:12.5px;color:var(--ink-500);margin-top:10px">위 예시는 1인당 원가 ₩153,650 · 판매가 ₩178,250 기준의 30명 기준 수익률. 수수료 22~25% 차감 후 평균 −8~−11%(손실 구간). <strong>자체 직판 우위는 BEP 12~18명 차이</strong>. AI 보고서가 자동 권고: "OTA 단독 판매는 BEP 34~38명, 그 이하는 자체 직판 우선".</p>
+
+    <div class="callout callout-gold">
+      <div class="callout-title">왜 이게 핵심 가치인가</div>
+      <p style="margin:0">단가 계산만 하는 도구는 시장에 흔하다(엑셀). 본 제품의 차별 가치는 "이 인원·이 채널로 팔면 흑자인가, 몇 명을 더 채워야 흑자인가, 자체 온라인으로 직판하는 게 B2B 소매보다 얼마나 이익인가"를 즉답한다는 것. 통합기획서 [docs/통합기획서.html:1672](통합기획서.html#L1672) "What-if 차량 비교"·[docs/통합기획서.html:1679](통합기획서.html#L1679) "커미션 체인 4단계"의 합성으로, 본 제품의 본질을 이 한 표가 정의한다.</p>
+    </div>
+
+    <div class="callout callout-green">
+      <div class="callout-title">계산 정밀도 규칙</div>
+      <ul style="margin:0">
+        <li>중간 계산은 JavaScript Number (IEEE 754 double) 그대로 사용 — 통화 합산 ~20조 KRW까지 안전.</li>
+        <li>최종 출력 시 <code>Math.round</code>로 1원 단위 반올림. USD는 0.01 단위.</li>
+        <li>표시 포맷: <code>Intl.NumberFormat('ko-KR')</code> · <code>Intl.NumberFormat('en-US', { currency: 'USD' })</code>.</li>
+        <li>음수 입력 차단 — react-hook-form + zod 스키마에서 <code>z.number().nonnegative()</code>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ S08 화면 명세 ============ -->
+  <section id="s08">
+    <div class="sec-head"><span class="sec-num">S08</span><h2 class="sec-title">화면 명세·와이어프레임</h2><span class="sec-kicker">SCREENS</span></div>
+
+    <p>Phase 0 화면 = 공개 5개 + 관리자 7개. 데스크톱 1280px 기준 와이어, 모바일은 768px 미만 단일 컬럼.</p>
+
+    <h3>화면 목록</h3>
+    <div class="phase-grid">
+      <div class="phase-box active"><div class="phase-box-num">P00</div><div class="phase-box-title">/ 랜딩</div><div class="phase-box-body">제품 소개 + 빌더 진입 CTA</div></div>
+      <div class="phase-box active"><div class="phase-box-num">P01</div><div class="phase-box-title">/builder</div><div class="phase-box-body">패키지 빌더 (Day·인원·항목)</div></div>
+      <div class="phase-box active"><div class="phase-box-num">P02</div><div class="phase-box-title">/result</div><div class="phase-box-body">계산 결과 + 인원별 단가</div></div>
+      <div class="phase-box active"><div class="phase-box-num">P03</div><div class="phase-box-title">/share/[hash]</div><div class="phase-box-body">공유 링크 진입 → builder 복원</div></div>
+      <div class="phase-box active"><div class="phase-box-num">P04</div><div class="phase-box-title">/about</div><div class="phase-box-body">FAQ + 면책</div></div>
+      <div class="phase-box"><div class="phase-box-num">A01</div><div class="phase-box-title">/admin/login</div><div class="phase-box-body">Email+Password</div></div>
+      <div class="phase-box"><div class="phase-box-num">A02</div><div class="phase-box-title">/admin</div><div class="phase-box-body">대시보드</div></div>
+      <div class="phase-box"><div class="phase-box-num">A03</div><div class="phase-box-title">/admin/vehicles</div><div class="phase-box-body">차량 단가 CRUD</div></div>
+      <div class="phase-box"><div class="phase-box-num">A04</div><div class="phase-box-title">/admin/guides</div><div class="phase-box-body">가이드 단가 CRUD</div></div>
+      <div class="phase-box"><div class="phase-box-num">A05</div><div class="phase-box-title">/admin/places</div><div class="phase-box-body">관광지·식당·공연 CRUD</div></div>
+      <div class="phase-box"><div class="phase-box-num">A06</div><div class="phase-box-title">/admin/seasons</div><div class="phase-box-body">시즌 정의 CRUD</div></div>
+      <div class="phase-box"><div class="phase-box-num">A07</div><div class="phase-box-title">/admin/settings</div><div class="phase-box-body">VAT·환율·기본 마진</div></div>
+    </div>
+
+    <h3>P01 — 패키지 빌더 (핵심)</h3>
+    <div class="wire">┌──────────────────────────────────────────────────────────────────────┐
+│ [헤더] 로고      투어플랜      [도움말]   [내 패키지(localStorage)] │
+├────────────┬─────────────────────────────────────────────────────────┤
+│ [좌 사이드]│ [메인 영역]                                              │
+│            │                                                          │
+│ ▼ 인원     │ ┌─ Day 1 ─────────────────────────────────┐  ┌─────────┐│
+│  성인 [18]│ │ □ 항목 추가  ⊕                          │  │ 실시간  ││
+│  소아 [02]│ │ ┌─[식사] 한식 점심  성인 25,000원 ────┐│  │ 단가    ││
+│  유아 [00]│ │ │  소아 50% 적용 ✓  시즌 보정 적용 ✓ ││  │         ││
+│  경로 [00]│ │ └─────────────────────────────────────┘│  │ 1인당  ││
+│  ─────────│ │ ┌─[입장] 경복궁  성인 3,000원 ───────┐│  │ ₩178k  ││
+│ ▼ 일정     │ │ │  소아 1,500원  유아 무료           ││  │ $130   ││
+│  Day 1     │ │ └─────────────────────────────────────┘│  │         ││
+│  Day 2 ⊕  │ └──────────────────────────────────────────┘  │ 그룹총액││
+│            │ ┌─ 파티 공통 비용 ─────────────────────────┐ │ ₩3.56m ││
+│ ▼ 시즌     │ │ 차량: 25인승 고급 × 2일 = 1,200,000원   │ │ $2,599 ││
+│  ○성수기   │ │ 가이드: 영어 통역 × 2일 = 500,000원     │ │         ││
+│  ●비수기   │ │                                           │ │ [공유] ││
+│  ○공휴일   │ └──────────────────────────────────────────┘ │ [엑셀] ││
+│            │                                                  │ [PDF] ││
+│ ▼ 마진     │                                                  └─────────┘
+│  net  [12]%│
+│  ret  [35]%│
+│            │
+│ ▼ 환율     │
+│  USD 0.00073│
+└────────────┴──────────────────────────────────────────────────────────┘</div>
+
+    <h3>P02 — 결과 화면 (인원별 단가 표시)</h3>
+    <div class="wire">┌──────────────────────────────────────────────────────────────────────┐
+│ 한국 인바운드 2박3일 · 성인18+소아2 · 비수기                          │
+├──────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │  1인당 최종 단가 (VAT·마진 포함)                                │ │
+│  │  ┌──────────┬──────────┬──────────┬──────────┐                  │ │
+│  │  │ 성인     │ 소아     │ 유아     │ 경로     │                  │ │
+│  │  │ ₩178,250 │ ₩ 89,125 │ ₩ 45,000 │ ₩142,600 │                  │ │
+│  │  │ $130     │ $ 65     │ $ 33     │ $104     │                  │ │
+│  │  └──────────┴──────────┴──────────┴──────────┘                  │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│  ┌─ 그룹 총액 ─────────────────────────────────────────────────────┐ │
+│  │  ₩3,565,000  ($2,599)                                          │ │
+│  │  성인 18×178,250 + 소아 2×89,125 + 유아 0 + 경로 0             │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│  ┌─ Day별 소계 매트릭스 ──────────────────────────────────────────┐ │
+│  │  Day | 식사   | 입장 | 쇼  | 인당소계 | 누계  | USD환산        │ │
+│  │  1   | 35,000 | 5k   | 0   | 40,000   | 40k   | $29.2          │ │
+│  │  2   | 40,000 | 8k   | 50k | 98,000   | 138k  | $100.7         │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│  ┌─ What-if 시뮬레이션 ──────────────────────────────────────────┐ │
+│  │  인원 [─────●────────] 20명                                    │ │
+│  │  차량 [25인승▼]                                                │ │
+│  │  → 35인승으로 변경 시 1인당 ₩6,500 절감                       │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│  [엑셀 다운로드]  [PDF 인쇄]  [공유 링크 복사]                       │
+└──────────────────────────────────────────────────────────────────────┘</div>
+
+    <h3>모바일 (768px 미만)</h3>
+    <ul>
+      <li>사이드바 → 하단 시트 (인원·시즌·마진 토글).</li>
+      <li>실시간 단가 패널 → 화면 상단 sticky bar 1줄.</li>
+      <li>Day별 항목 카드는 세로 스크롤.</li>
+      <li>다운로드 버튼은 하단 고정 FAB (Floating Action Button).</li>
+    </ul>
+
+    <h3>인터랙션 원칙</h3>
+    <ul>
+      <li>모든 숫자 입력은 즉시 재계산 (debounce 100ms).</li>
+      <li>±버튼 + 직접 입력 둘 다 제공. 모바일은 ±우선.</li>
+      <li>자동 저장 — 작업 중 매 3초 localStorage 동기. "저장됨 14:22" 표시.</li>
+      <li>실수 방지 — Day 삭제·항목 삭제 시 1단계 확인 (모달 아님, inline confirm).</li>
+      <li>모션 0.15~0.2초 (기획서:1948 원칙 5).</li>
+    </ul>
+  </section>
+
+  <!-- ============ S09 CMS 명세 ============ -->
+  <section id="s09">
+    <div class="sec-head"><span class="sec-num">S09</span><h2 class="sec-title">/admin CMS 관리자 명세</h2><span class="sec-kicker">ADMIN</span></div>
+
+    <h3>접근 보호</h3>
+    <ul>
+      <li><code>app/admin/layout.tsx</code>에서 서버 측 <code>auth.getUser()</code> → <code>admin_users</code> 조회.</li>
+      <li>비인증 시 <code>/admin/login</code>으로 redirect.</li>
+      <li>인증되었지만 admin_users에 없으면 <code>notFound()</code> (404).</li>
+      <li><code>middleware.ts</code>에서 <code>/admin/*</code> 매처 + 동일 검사 (이중 안전망).</li>
+    </ul>
+
+    <h3>관리자 대시보드 (/admin)</h3>
+    <div class="wire">┌──────────────────────────────────────────────────────────────────┐
+│ super-admin · pfekim@gmail.com                          [로그아웃]│
+├──────────────────────────────────────────────────────────────────┤
+│  ┌─ 마스터 데이터 ──────┐  ┌─ 사용 현황 (Vercel Analytics) ────┐ │
+│  │ 차량      [12 종]   │  │  DAU       42                    │ │
+│  │ 가이드    [28 명]   │  │  계산 횟수 178                    │ │
+│  │ 관광지    [54 개]   │  │  공유 클릭 12                     │ │
+│  │ 시즌      [ 6 건]   │  │  엑셀 다운로드 31                 │ │
+│  │ 카테고리  [ 8 개]   │  │  PDF 출력    24                   │ │
+│  │ 포함 템플 [16 개]   │  └──────────────────────────────────┘ │
+│  └─────────────────────┘                                         │
+│                                                                  │
+│  ┌─ 최근 감사 로그 (10건) ─────────────────────────────────────┐ │
+│  │ 05-14 16:32 · 차량 25인승 프리미엄 단가 +50,000원 update    │ │
+│  │ 05-14 15:18 · 관광지 "DMZ" 운영시간 update                 │ │
+│  │ 05-13 22:04 · 시즌 "여름 성수기 2026" insert               │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────┘</div>
+
+    <h3>마스터 데이터 CRUD 화면 (공통 패턴)</h3>
+    <div class="wire">┌──────────────────────────────────────────────────────────────────┐
+│ /admin/vehicles                       [+ 새 차량 등록]            │
+├──────────────────────────────────────────────────────────────────┤
+│ [검색 ___________]  [활성만 ▼]  [정렬: 인승▲]                    │
+├──────────────────────────────────────────────────────────────────┤
+│ 인승 | 등급      | 표시명          | 일당(KRW)  | 활성 | 작업    │
+│  9   | standard  | 9인승 일반      |   220,000  | ✓    | 편집 ✕  │
+│  9   | premium   | 9인승 고급      |   280,000  | ✓    | 편집 ✕  │
+│ 15   | standard  | 15인승 일반     |   320,000  | ✓    | 편집 ✕  │
+│ 25   | premium   | 25인승 고급     |   650,000  | ✓    | 편집 ✕  │
+│ 35   | luxury    | 35인승 프리미엄 | 1,200,000  | ✓    | 편집 ✕  │
+│ 45   | standard  | 45인승 일반     |   980,000  | ✓    | 편집 ✕  │
+├──────────────────────────────────────────────────────────────────┤
+│ 12 / 12 표시                                                      │
+└──────────────────────────────────────────────────────────────────┘</div>
+
+    <h3>관리자 화면 우선순위</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>경로</th><th>역할</th><th>Phase 0 우선순위</th></tr></thead>
+      <tbody>
+        <tr><td>/admin/login</td><td>Email+Password 로그인</td><td>필수</td></tr>
+        <tr><td>/admin</td><td>대시보드</td><td>필수</td></tr>
+        <tr><td>/admin/vehicles</td><td>차량 단가 CRUD</td><td>필수</td></tr>
+        <tr><td>/admin/guides</td><td>가이드 단가 CRUD</td><td>필수</td></tr>
+        <tr><td>/admin/places</td><td>관광지·식당·공연 CRUD</td><td>필수</td></tr>
+        <tr><td>/admin/seasons</td><td>시즌 정의 CRUD</td><td>필수</td></tr>
+        <tr><td><strong>/admin/channels ★</strong></td><td><strong>판매 채널·수수료 CRUD (5채널)</strong></td><td><strong>필수 (2026-05-17 추가)</strong></td></tr>
+        <tr><td>/admin/categories</td><td>카테고리·아이콘 편집</td><td>선택 (시드 후 변경 거의 없음)</td></tr>
+        <tr><td>/admin/inclusions</td><td>포함·불포함 템플릿</td><td>선택</td></tr>
+        <tr><td>/admin/settings</td><td>VAT·환율·기본 마진</td><td>필수</td></tr>
+        <tr><td>/admin/audit</td><td>감사 로그 조회</td><td>선택 (Phase 1 권장)</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>CRUD 폼 공통 동작</h3>
+    <ul>
+      <li>react-hook-form + zod 검증.</li>
+      <li>입력 직후 toast — "저장됨" / "오류: <code>field</code>".</li>
+      <li>삭제는 모달 확인 + soft delete (<code>is_active=false</code>) 우선, hard delete는 별도 메뉴.</li>
+      <li>변경 사항은 자동으로 audit_log에 트리거 기록.</li>
+    </ul>
+  </section>
+
+  <!-- ============ S10 PWA ============ -->
+  <section id="s10">
+    <div class="sec-head"><span class="sec-num">S10</span><h2 class="sec-title">PWA·캐시 전략</h2><span class="sec-kicker">PWA</span></div>
+
+    <h3>매니페스트</h3>
+<pre><code><span class="tok-com">// app/manifest.ts (Next.js Metadata API)</span>
+<span class="tok-key">export default function</span> manifest() {
+  <span class="tok-key">return</span> {
+    name: <span class="tok-str">'투어플랜 — 외국인 인바운드 단가 계산'</span>,
+    short_name: <span class="tok-str">'투어플랜'</span>,
+    description: <span class="tok-str">'한국 인바운드 여행사·가이드용 패키지 단가 계산기'</span>,
+    start_url: <span class="tok-str">'/builder'</span>,
+    display: <span class="tok-str">'standalone'</span>,
+    background_color: <span class="tok-str">'#F0EEE6'</span>,
+    theme_color: <span class="tok-str">'#CC785C'</span>,
+    icons: [
+      { src: <span class="tok-str">'/icon-192.png'</span>, sizes: <span class="tok-str">'192x192'</span>, type: <span class="tok-str">'image/png'</span> },
+      { src: <span class="tok-str">'/icon-512.png'</span>, sizes: <span class="tok-str">'512x512'</span>, type: <span class="tok-str">'image/png'</span> },
+      { src: <span class="tok-str">'/icon-maskable.png'</span>, sizes: <span class="tok-str">'512x512'</span>, type: <span class="tok-str">'image/png'</span>, purpose: <span class="tok-str">'maskable'</span> }
+    ]
+  };
+}</code></pre>
+
+    <h3>Service Worker (@serwist/next)</h3>
+<pre><code><span class="tok-com">// app/sw.ts (Serwist 표준 패턴)</span>
+<span class="tok-key">import</span> { defaultCache } <span class="tok-key">from</span> <span class="tok-str">'@serwist/next/worker'</span>;
+<span class="tok-key">import</span> { Serwist } <span class="tok-key">from</span> <span class="tok-str">'serwist'</span>;
+
+<span class="tok-key">const</span> serwist = <span class="tok-key">new</span> Serwist({
+  precacheEntries: self.__SW_MANIFEST,
+  skipWaiting: true,
+  clientsClaim: true,
+  navigationPreload: true,
+  runtimeCaching: [
+    {
+      matcher: ({ url }) =&gt; url.pathname.startsWith(<span class="tok-str">'/api/master/'</span>),
+      handler: <span class="tok-str">'StaleWhileRevalidate'</span>,
+      options: { cacheName: <span class="tok-str">'master-data'</span>, expiration: { maxAgeSeconds: <span class="tok-num">86400</span> } }
+    },
+    {
+      matcher: ({ url }) =&gt; url.pathname.startsWith(<span class="tok-str">'/admin'</span>),
+      handler: <span class="tok-str">'NetworkOnly'</span>
+    },
+    ...defaultCache
+  ]
+});
+serwist.addEventListeners();</code></pre>
+
+    <h3>오프라인 fallback</h3>
+    <ul>
+      <li>마스터 데이터가 캐시에 있으면 빌더 전체 사용 가능 (계산은 클라이언트 단독).</li>
+      <li>캐시 없는 첫 방문에서 오프라인 → 안내 페이지 표시 ("처음 방문은 인터넷 필요").</li>
+      <li>localStorage 작업은 오프라인에서도 100% 동작.</li>
+      <li>/admin은 오프라인에서 거부 (NetworkOnly).</li>
+    </ul>
+
+    <h3>설치 유도</h3>
+    <ul>
+      <li>3번째 방문 시 사이드바 상단에 "홈 화면에 설치" 배너 1회 표시.</li>
+      <li>iOS Safari는 자동 프롬프트 없음 → "공유 → 홈 화면에 추가" 안내 모달.</li>
+    </ul>
+  </section>
+
+  <!-- ============ S11 출력 ============ -->
+  <section id="s11">
+    <div class="sec-head"><span class="sec-num">S11</span><h2 class="sec-title">출력·공유 v2.0 (10시트 + 6방식)</h2><span class="sec-kicker">EXPORT · SHARE</span></div>
+
+    <div class="callout callout-teal">
+      <div class="callout-title" style="color:#FC2D59">★ v1.0 → v2.0 출력·공유 변경 (D45)</div>
+      <ul style="margin:6px 0 0;line-height:1.85">
+        <li><strong>엑셀 6시트 → 10시트</strong> — 표지·요약·Day별·공통비용·개별비용·인원별 단가·채널 수익률·BEP·OTA 비교·메모.</li>
+        <li><strong>통합 PDF</strong> — 표지(1) + Day(N) + 공통/개별 비용(1) + 채널·BEP(1) + 메모(α). A4 세로, 15mm 마진.</li>
+        <li><strong>공유 6방식</strong> — URL 해시(lz-string)·QR 코드·매직링크(이메일)·PDF 첨부·엑셀 첨부·인쇄.</li>
+        <li><strong>모든 금액 VAT 10% 포함 합계 표기</strong> (S20). 시트 머리글에 "단위: KRW (VAT 10% 포함 합계)" 명시.</li>
+      </ul>
+    </div>
+
+    <h3>엑셀 (.xlsx) — SheetJS 10시트</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>#</th><th>시트명</th><th>내용</th><th>대상</th></tr></thead>
+      <tbody>
+        <tr><td class="num">01</td><td>표지</td><td>투어 명칭(productName)·작성일·발행처·연락처·QR 코드</td><td>고객 인쇄용</td></tr>
+        <tr><td class="num">02</td><td>요약</td><td>인원·일정 요약 + 1인당 단가 + 그룹 총액 (KRW · USD 병기 · VAT 포함)</td><td>고객 1페이지</td></tr>
+        <tr><td class="num">03~</td><td>Day1·2·…·N</td><td>Day별 항목 상세 (시간·장소·체험시간·식사·입장료·메모)</td><td>고객·운영자</td></tr>
+        <tr><td class="num">04</td><td>공통비용</td><td>차량·가이드·DG 일당 합계 + 시즌 보정 + 1인당 분배식</td><td>견적 작성자</td></tr>
+        <tr><td class="num">05</td><td>개별비용</td><td>인당 항목 (식사·입장·쇼·기념품) 합계 + 지불 방식 (포함/무료/개별)</td><td>견적 작성자</td></tr>
+        <tr><td class="num">06</td><td>인원별 단가</td><td>5·10·15·20·25·30·35·40·45 인원 구간별 1인당 단가 (VAT 포함 합계)</td><td>의사결정</td></tr>
+        <tr><td class="num">07</td><td>채널 수익률</td><td>5채널 × 9구간 = 45셀 수익률 매트릭스 + 한계 수익률</td><td>영업 협상</td></tr>
+        <tr><td class="num">08</td><td>BEP 통합</td><td>STEP 13 BEP 카드 + "최소 N명부터 수익" + 추천 채널</td><td>의사결정</td></tr>
+        <tr><td class="num">09</td><td>OTA 비교</td><td>STEP 14 OTA 6사 × 현재 인원 수익률 + BEP</td><td>채널 선택</td></tr>
+        <tr><td class="num">10</td><td>메모</td><td>5레벨 메모 (패키지·Day·항목·거래처·고객) 통합 출력</td><td>운영 인계</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>공유 6방식 (D45)</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>방식</th><th>구현</th><th>제한·특징</th></tr></thead>
+      <tbody>
+        <tr><td><strong>URL 해시</strong></td><td>lz-string 압축 후 base64 → URL #hash</td><td>비로그인 가능 · ~50KB 한도 · 브라우저 즉시 복원</td></tr>
+        <tr><td><strong>QR 코드</strong></td><td>qrcode-svg 무료 라이브러리 + URL 해시</td><td>오프라인 가능 · 영업 현장 모바일 → PC 즉시 공유</td></tr>
+        <tr><td><strong>매직링크</strong></td><td>Resend Free → 이메일 발송 (share_token 발급, 30일 만료)</td><td>인증 사용자만 · user_packages.share_token 저장</td></tr>
+        <tr><td><strong>PDF 첨부</strong></td><td>window.print() → PDF 저장 → 첨부 (또는 매직링크에 base64 포함)</td><td>모든 사용자 가능 · 인쇄·메일 첨부 표준</td></tr>
+        <tr><td><strong>엑셀 첨부</strong></td><td>SheetJS xlsx 다운로드 후 사용자 메일 첨부</td><td>10시트 일괄 · 가공·재계산 가능</td></tr>
+        <tr><td><strong>인쇄</strong></td><td>@media print A4 세로 + 인쇄용 토큰 적용</td><td>고객 대면 영업·여행 일정 인쇄</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>엑셀 생성 의사 코드</h3>
+<pre><code><span class="tok-key">import</span> * <span class="tok-key">as</span> XLSX <span class="tok-key">from</span> <span class="tok-str">'xlsx'</span>;
+
+<span class="tok-key">function</span> exportExcel(input: <span class="tok-typ">CalculationInput</span>, result: <span class="tok-typ">CalculationResult</span>) {
+  <span class="tok-key">const</span> wb = XLSX.utils.book_new();
+
+  <span class="tok-key">const</span> summary = XLSX.utils.aoa_to_sheet([
+    [<span class="tok-str">'패키지'</span>, input.packageName],
+    [<span class="tok-str">'성인'</span>, input.party.adult, <span class="tok-str">'1인당 (KRW)'</span>, result.finalKrw.adult, <span class="tok-str">'USD'</span>, result.finalUsd.adult],
+    [<span class="tok-str">'소아'</span>, input.party.child, <span class="tok-str">'1인당 (KRW)'</span>, result.finalKrw.child, <span class="tok-str">'USD'</span>, result.finalUsd.child],
+    [<span class="tok-str">'그룹 총액'</span>, result.groupTotalKrw, <span class="tok-str">'USD'</span>, result.groupTotalUsd]
+  ]);
+  XLSX.utils.book_append_sheet(wb, summary, <span class="tok-str">'요약'</span>);
+
+  input.days.forEach(day =&gt; {
+    XLSX.utils.book_append_sheet(wb, buildDaySheet(day), <span class="tok-str">`Day${day.dayNumber}`</span>);
+  });
+  XLSX.writeFile(wb, <span class="tok-str">`${input.packageName}_${dateStamp()}.xlsx`</span>);
+}</code></pre>
+
+    <h3>PDF — window.print()</h3>
+    <ul>
+      <li>결과 화면을 <code>@media print</code>로 인쇄 레이아웃 변환.</li>
+      <li>A4 세로, margin 15mm.</li>
+      <li>인쇄 모드에서는 사이드바·CTA·What-if 숨김, 요약·Day별 매트릭스·포함/불포함만 노출.</li>
+      <li>페이지 분리: 요약(1p) → Day별(N) → 약관·면책(1p).</li>
+    </ul>
+
+    <h3>출력 비교 매트릭스</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>요건</th><th>엑셀</th><th>PDF</th></tr></thead>
+      <tbody>
+        <tr><td>고객 확정 견적</td><td>○</td><td>◎ (수정 불가)</td></tr>
+        <tr><td>내부 검토·수정</td><td>◎</td><td>×</td></tr>
+        <tr><td>다국어 변환</td><td>○ (별도 작업)</td><td>○ (Phase 1)</td></tr>
+        <tr><td>What-if 시뮬레이션</td><td>◎</td><td>△</td></tr>
+        <tr><td>모바일 친화</td><td>△</td><td>◎</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ============ S12 기술 스택 ============ -->
+  <section id="s12">
+    <div class="sec-head"><span class="sec-num">S12</span><h2 class="sec-title">기술 스택 확정</h2><span class="sec-kicker">STACK</span></div>
+
+    <h3>프런트엔드</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>레이어</th><th>패키지</th><th>버전 정책</th></tr></thead>
+      <tbody>
+        <tr><td>프레임워크</td><td>next</td><td>설치 시점 latest (Week 1 lock)</td></tr>
+        <tr><td>런타임</td><td>react, react-dom</td><td>Next.js 종속</td></tr>
+        <tr><td>스타일</td><td>tailwindcss v4</td><td>최신 안정</td></tr>
+        <tr><td>컴포넌트</td><td>shadcn/ui (CLI 추가)</td><td>—</td></tr>
+        <tr><td>PWA</td><td>@serwist/next, serwist</td><td>v9.x</td></tr>
+        <tr><td>상태</td><td>zustand</td><td>v5</td></tr>
+        <tr><td>폼</td><td>react-hook-form, zod, @hookform/resolvers</td><td>최신</td></tr>
+        <tr><td>fetching</td><td>@tanstack/react-query, @supabase/supabase-js</td><td>v5, v2</td></tr>
+        <tr><td>아이콘</td><td>lucide-react</td><td>최신</td></tr>
+        <tr><td>유틸</td><td>lz-string, qrcode, xlsx, date-fns</td><td>최신</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>백엔드·서비스</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>레이어</th><th>선택</th><th>Phase 0 사용량</th></tr></thead>
+      <tbody>
+        <tr><td>DB·Auth·Storage</td><td>Supabase (Free, ap-northeast-2)</td><td>500MB DB / 1GB Storage / 50k MAU 한도 내</td></tr>
+        <tr><td>호스팅</td><td>Vercel Hobby Free</td><td>100GB 대역폭 / 100GB-Hours Serverless</td></tr>
+        <tr><td>도메인</td><td>.vercel.app 서브</td><td>0원</td></tr>
+        <tr><td>분석</td><td>Vercel Analytics 무료 tier</td><td>2,500 events/일</td></tr>
+        <tr><td>에러</td><td>Sentry Free</td><td>5k errors/월</td></tr>
+        <tr><td>가동률</td><td>UptimeRobot Free</td><td>50 모니터, 5분 간격</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>개발 도구</h3>
+    <p>
+      <span class="tag tag-teal">Node 20 LTS</span>
+      <span class="tag tag-teal">npm</span>
+      <span class="tag tag-teal">TypeScript strict</span>
+      <span class="tag tag-teal">ESLint + next/core-web-vitals</span>
+      <span class="tag tag-teal">Prettier</span>
+      <span class="tag tag-gold">Vitest</span>
+      <span class="tag tag-gold">Supabase CLI</span>
+      <span class="tag tag-gold">GitHub Actions (CI)</span>
+      <span class="tag tag-gray">Vercel CLI (Preview·Production)</span>
+    </p>
+
+    <h3>버전 잠금 정책</h3>
+    <ul>
+      <li>Week 1 첫 작업: <code>npm view next dist-tags</code> 결과를 <code>VERSION_LOCK.md</code>에 기록.</li>
+      <li><code>package-lock.json</code> 커밋. Renovate·Dependabot은 Phase 0 비활성 (안정 유지).</li>
+      <li>주요 의존성은 caret(<code>^</code>) 대신 정확 버전 잠금.</li>
+    </ul>
+  </section>
+
+  <!-- ============ S13 로드맵 ============ -->
+  <section id="s13">
+    <div class="sec-head"><span class="sec-num">S13</span><h2 class="sec-title">6주 로드맵 (Phase 0)</h2><span class="sec-kicker">ROADMAP</span></div>
+
+    <div class="timeline">
+      <div class="timeline-item milestone">
+        <div class="timeline-label">WEEK 0 · 2026-05-15 ~ 05-17</div>
+        <div class="timeline-title">기획 승인 + 환경 준비</div>
+        <div class="timeline-body">본 문서 대표 승인 → GitHub private repo 생성 → Vercel 프로젝트 연결 → Supabase 프로젝트 신규 생성 (ap-northeast-2) → 로컬 개발 환경 (Node 20·npm) 확인 → <code>VERSION_LOCK.md</code> 기록.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-label">WEEK 1 · 05-18 ~ 05-24</div>
+        <div class="timeline-title">스키마·시드·타입 (Schema-First)</div>
+        <div class="timeline-body">Next.js 프로젝트 부트스트랩 → Supabase CLI 초기화 → 11개 테이블 마이그레이션 → RLS 정책 + 감사 트리거 → <code>supabase gen types</code> → 시드 데이터 (차량 5·가이드 10·관광지 50·시즌 4·카테고리 8·포함 16·시스템 설정 5) 수기 입력 → Vitest 단위 테스트 환경.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-label">WEEK 2 · 05-25 ~ 05-31</div>
+        <div class="timeline-title">계산 로직 + 빌더 골격</div>
+        <div class="timeline-body">순수 계산 함수 (STEP 1~8) 구현 + Vitest 6 케이스 → zustand 스토어 → 빌더 페이지 골격 (인원·Day·항목 추가) → shadcn/ui 컴포넌트 셋업 → Tailwind 토큰 (Claude-inspired) 적용 → localStorage persist.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-label">WEEK 3 · 06-01 ~ 06-07</div>
+        <div class="timeline-title">빌더 완성 + 결과 화면</div>
+        <div class="timeline-body">항목 검색·선택 (TanStack Query + Supabase) → 시즌 보정 적용 → 마진·VAT 조정 UI → 결과 페이지 (P02) → 인원별 단가 카드 → Day별 매트릭스 → What-if 시뮬레이션 슬라이더.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-label">WEEK 4 · 06-08 ~ 06-14</div>
+        <div class="timeline-title">/admin CMS 5종</div>
+        <div class="timeline-body">/admin/login + 미들웨어 보호 → 대시보드 → vehicles·guides·places·seasons·settings CRUD → react-hook-form + zod 검증 → 감사 로그 자동 기록 확인.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-label">WEEK 5 · 06-15 ~ 06-21</div>
+        <div class="timeline-title">출력 + PWA + 공유</div>
+        <div class="timeline-body">엑셀 다운로드 (SheetJS · 6 시트) → @media print PDF 레이아웃 → URL 해시 공유 (lz-string) → /share/[hash] 복원 → @serwist/next PWA → 매니페스트 + 아이콘 3종.</div>
+      </div>
+      <div class="timeline-item milestone">
+        <div class="timeline-label">WEEK 6 · 06-22 ~ 06-26</div>
+        <div class="timeline-title">통합 QA + 배포</div>
+        <div class="timeline-body">수동 QA 체크리스트 (S17 부록) 전 항목 통과 → Vercel Production 배포 → Sentry·UptimeRobot 연결 → Lighthouse Performance/PWA/Accessibility 90+ 확인 → 대표 인수 테스트 → Phase 0 정식 오픈 (착수 +6주).</div>
+      </div>
+    </div>
+
+    <h3>마일스톤 체크포인트</h3>
+    <ul>
+      <li><strong>M1 (Week 1 종료)</strong> — 마스터 데이터 조회 가능. 빌더는 미구현이어도 OK.</li>
+      <li><strong>M2 (Week 3 종료)</strong> — 빌더에서 1인당 단가 계산 화면에 표시.</li>
+      <li><strong>M3 (Week 5 종료)</strong> — 엑셀·PDF·공유 모두 동작. PWA 설치 가능.</li>
+      <li><strong>M4 (Week 6 종료)</strong> — Vercel Production 공개 URL 응답 200, 대표 인수 확인.</li>
+    </ul>
+
+    <div class="callout callout-gold">
+      <div class="callout-title">M2 미달 시 범위 축소 (사전 합의)</div>
+      <p style="margin:0">Week 3 종료 시점에 빌더 1인당 단가 표시가 동작하지 않으면 다음을 Phase 1로 이월: <code>/admin/categories</code>, <code>/admin/inclusions</code>, <code>/admin/audit</code>, What-if 시뮬레이션 UI. 이 4개를 빼면 Week 4~5 부담 약 30% 감소.</p>
+    </div>
+  </section>
+
+  <!-- ============ S14 KPI ============ -->
+  <section id="s14">
+    <div class="sec-head"><span class="sec-num">S14</span><h2 class="sec-title">Phase 0 성공 기준 (KPI)</h2><span class="sec-kicker">KPI</span></div>
+
+    <h3>기술 KPI (정량)</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>지표</th><th>측정 도구</th><th>목표</th><th>최소</th></tr></thead>
+      <tbody>
+        <tr><td>Lighthouse Performance</td><td>Lighthouse CI</td><td>≥ 90점</td><td>≥ 80점</td></tr>
+        <tr><td>Lighthouse PWA</td><td>Lighthouse CI</td><td>= 100점</td><td>≥ 90점</td></tr>
+        <tr><td>Lighthouse Accessibility</td><td>Lighthouse CI</td><td>≥ 95점</td><td>≥ 85점</td></tr>
+        <tr><td>FCP (First Contentful Paint)</td><td>Vercel Analytics</td><td>&lt; 1.5s</td><td>&lt; 2.5s</td></tr>
+        <tr><td>LCP (Largest Contentful Paint)</td><td>Vercel Analytics</td><td>&lt; 2.0s</td><td>&lt; 2.5s</td></tr>
+        <tr><td>CLS (Cumulative Layout Shift)</td><td>Vercel Analytics</td><td>&lt; 0.05</td><td>&lt; 0.1</td></tr>
+        <tr><td>TBT (Total Blocking Time)</td><td>Lighthouse</td><td>&lt; 150ms</td><td>&lt; 300ms</td></tr>
+        <tr><td>계산 단위 테스트 통과율</td><td>Vitest</td><td>100% (6 케이스)</td><td>100%</td></tr>
+        <tr><td>TypeScript 컴파일 에러</td><td><code>tsc --noEmit</code></td><td>0건</td><td>0건</td></tr>
+        <tr><td>ESLint 에러</td><td>eslint</td><td>0건</td><td>0건 (warning 허용)</td></tr>
+        <tr><td>번들 크기 (initial)</td><td>Next.js build</td><td>&lt; 200KB gzip</td><td>&lt; 300KB</td></tr>
+        <tr><td>Sentry 에러율 (배포 후 1주)</td><td>Sentry</td><td>&lt; 0.5%</td><td>&lt; 2%</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>기능 KPI (체크리스트)</h3>
+    <ul>
+      <li>비로그인 사용자가 5분 안에 1인당 단가 계산 결과를 본다.</li>
+      <li>엑셀·PDF 다운로드가 모두 동작한다.</li>
+      <li>URL 해시 공유 후 다른 브라우저에서 동일 결과가 복원된다.</li>
+      <li>오프라인 상태에서 이미 캐시된 마스터 데이터로 계산 가능하다.</li>
+      <li>PWA 설치 후 홈 화면에서 standalone으로 실행된다.</li>
+      <li>/admin에서 차량·가이드·관광지·시즌·설정 CRUD가 모두 동작한다.</li>
+      <li>모든 admin 작업이 audit_log에 기록된다.</li>
+    </ul>
+
+    <h3>운영 KPI (정량 — 인수 후 첫 2주)</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">DAU</div><div class="kpi-value">≥ 5</div><div class="kpi-sub">대표 + 내부 검증자</div></div>
+      <div class="kpi"><div class="kpi-label">계산 횟수</div><div class="kpi-value">≥ 50</div><div class="kpi-sub">14일 누계</div></div>
+      <div class="kpi"><div class="kpi-label">엑셀 다운로드</div><div class="kpi-value">≥ 10</div><div class="kpi-sub">14일 누계</div></div>
+      <div class="kpi"><div class="kpi-label">치명 버그</div><div class="kpi-value">0</div><div class="kpi-sub">Sentry P0/P1</div></div>
+    </div>
+
+    <p style="color:var(--ink-500);font-size:12px;margin-top:24px">KPI 측정 기간: 출시 후 2주. 미달 항목은 Phase 1 첫 주에 보완.</p>
+  </section>
+
+  <!-- ============ S15 리스크 ============ -->
+  <section id="s15">
+    <div class="sec-head"><span class="sec-num">S15</span><h2 class="sec-title">리스크·완화책 v2.0</h2><span class="sec-kicker">RISK</span></div>
+
+    <p>v2.0에서 "차량·가이드 시드 데이터 부정확" 리스크 <strong>제거</strong>(D33 본질 재정의로 책임이 사용자에게 분산) + "사용자 라이브러리 초기 입력 부담", "DG 비용 모델 검증", "OTA 수수료 데이터 신뢰성", "AI 보고서 hallucination" 4건 신규 추가.</p>
+
+    <div class="tbl-wrap"><table class="risk-table">
+      <thead><tr><th>리스크</th><th>영향</th><th>완화</th></tr></thead>
+      <tbody>
+        <tr><td>Supabase 단일 의존</td><td>장애 시 user_library·user_packages 조회 불가. 단, localStorage 캐시 있으면 계산은 가능.</td><td>Stale-While-Revalidate 캐시 24시간. localStorage에 마지막 성공 응답 보관. 비로그인 모드는 100% 클라이언트.</td></tr>
+        <tr><td>RLS 정책 미스 (v2.0 owner_id 축)</td><td>anon이 타 사용자 라이브러리 노출. 사용자 데이터 격리 실패.</td><td>모든 user_library·user_packages 정책은 <code>auth.uid() = owner_id</code> 단일 조건. Vitest 통합 테스트로 사용자 A→B 데이터 접근 거부 확인. CI 게이트.</td></tr>
+        <tr><td>Vercel Hobby 한도 초과</td><td>월 100GB 대역폭 초과 시 5xx. 트래픽 급증 가능.</td><td>Vercel Analytics 일일 모니터링. 70% 도달 시 Pro 업그레이드 (월 약 2.8만원). Q8 결정과 충돌 시 대표 재승인.</td></tr>
+        <tr><td>Supabase Free 한도 초과</td><td>500MB DB 초과 시 INSERT 실패. 50k MAU 초과 시 차단.</td><td>audit_log 90일 보관 자동 청소. user_packages는 사용자당 100개 제한. JSONB payload 크기 zod max 100KB.</td></tr>
+        <tr><td>Service Role 키 클라이언트 노출</td><td>전체 RLS 우회. 최악의 보안 사고.</td><td>Vercel ENV에 SERVICE_ROLE은 Server-Only로 분류. 클라이언트 번들에 import 시 빌드 에러 (eslint 룰 + grep CI).</td></tr>
+        <tr><td style="color:#FC2D59"><strong>★ 사용자 라이브러리 초기 입력 부담 (v2.0 신규)</strong></td><td>D33 본질로 사용자가 차량·가이드·관광지를 직접 채워야 함 → 첫 진입 시 빈 화면.</td><td>추천 프리셋 5세트 제공(소형 FIT·중형 GIT·대형 단체·DG 1:1·MICE). 1클릭 import. 30초 안에 첫 견적 시작 가능.</td></tr>
+        <tr><td style="color:#FC2D59"><strong>★ DG 비용 모델 검증 (v2.0 신규)</strong></td><td>1.4 프리미엄 + 식사 1식 ₩30k 가정. 실제 시장가와 ±20% 어긋날 가능.</td><td>D39 모델은 사용자가 user_library에서 vehicleBase·guideRate·meal 3변수 직접 조정 가능. 프리셋은 참고값 표기 (실측 ±20%).</td></tr>
+        <tr><td style="color:#FC2D59"><strong>★ OTA 수수료 데이터 신뢰성 (v2.0 신규)</strong></td><td>STEP 14 매트릭스의 22~25% 수수료는 공시 평균. 실제 계약은 협상 변동.</td><td>각 OTA 행에 "공시 평균 · 사용자 협상 시 라이브러리에서 덮어쓰기" 안내. AI 보고서가 "계약서 확인 후 입력 권장" 자동 첨부.</td></tr>
+        <tr><td style="color:#FC2D59"><strong>★ AI 보고서 hallucination (v2.0 신규)</strong></td><td>Groq Free LLM 응답이 계산값과 불일치 가능.</td><td>룰 베이스 8 카테고리 우선 적용 → LLM은 자연어 정제만. 모든 수치는 STEP 14 결과에서 직접 주입(프롬프트 변수). 검산 실패 시 룰 응답 폴백.</td></tr>
+        <tr><td>계산식 버그</td><td>잘못된 견적 → 영업 사고.</td><td>Vitest STEP 1~14 케이스 14건 + 결과 화면에 디버그 모드 (STEP 중간값 토글). 모든 금액 VAT 포함 합계 일관성 자동 검증.</td></tr>
+        <tr><td>오프라인 동작 미흡</td><td>가이드 현장에서 캐시 미스 시 사용 불가.</td><td>최초 진입 시 user_library prefetch + Service Worker 설치 안내. 캐시 만료 24시간 보수적.</td></tr>
+        <tr><td>Tailwind v4 안정성</td><td>2025년 출시 신버전. 일부 플러그인 호환 이슈.</td><td>shadcn/ui 공식 v4 가이드 따름. 호환 안 되는 플러그인은 미사용.</td></tr>
+        <tr><td>Next.js 버전 vs 설치 시점</td><td>버전이 기획서와 불일치 가능.</td><td>Q31 결정: 설치 시점 latest 채택. <code>VERSION_LOCK.md</code> 기록.</td></tr>
+        <tr><td>대표 1인 의존</td><td>대표 부재 시 시스템 설정·OTA 데이터 갱신 중단.</td><td>system_settings 변경은 audit_log 90일 보관. user_library는 사용자 자가 관리(D33).</td></tr>
+        <tr><td>일정 지연</td><td>6주 내 미완성. 트래픽 가정과 충돌.</td><td>주차별 마일스톤 M1~M4. M2 미달 시 OTA·BEP 통합·5레벨 메모 등 Phase 1 이월 (S13 callout).</td></tr>
+        <tr><td style="color:#FC2D59"><strong>★ v2.1 차량 대수 자동 산출 오류 (D49)</strong></td><td><code>ceil(인원/인승)</code>이 실제 운영과 어긋날 가능. 예: 47명 + 45인승 → 2대지만 1대 무리 운영 시도.</td><td>차량 대수 자동 산출 후 사용자 수동 조정 가능 토글. 1대 정원 초과(90%·100%·115%) 시 노란/빨강 경고. user_library에 "안전 운영 한도" 사용자 설정.</td></tr>
+        <tr><td style="color:#FC2D59"><strong>★ v2.1 휴무일 데이터 신뢰성 (D51)</strong></td><td>data.go.kr 특일 정보 API 누락·지연 가능. 윤년·임시공휴일 누락 시 캠페인 충돌.</td><td>분기 1회 정적 JSON 폴백 (앞으로 2년치). API 실패 시 폴백 즉시 사용. user_library.holiday에 사용자 수동 추가·제거 가능(대표 통제 영역 아님).</td></tr>
+        <tr><td style="color:#FC2D59"><strong>★ v2.1 목표 인원 비현실 가정 (D50)</strong></td><td>판매 목표 2,400명 같은 입력이 시즌·요일·캘린더와 맞지 않으면 "달성 불가" 시뮬레이션 결과로 잘못 신뢰 가능.</td><td>AI 보고서가 "1회당 평균 24명 필요" 산출 → 시즌별 매트릭스의 평균 예약 가능 인원과 비교 → 격차 ≥ 20% 시 빨강 경고 + 권고(판매가 인하·운영 요일 확장·시즌 추가). 목표 미달 가능성 %도 표시.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>리스크 발생 시 의사결정 권한</h3>
+    <ul>
+      <li>Phase 0 범위 축소·확장 → 대표 단독 결정.</li>
+      <li>비용 상한 변경 (Q8 "무료" 위반) → 대표 사전 승인.</li>
+      <li>일정 1주 이상 지연 → 대표 보고 + Phase 0 범위 재합의.</li>
+      <li>치명 버그 (P0) → 즉시 롤백 + 대표 보고.</li>
+    </ul>
+  </section>
+
+  <!-- ============ S16 자기 검증 ============ -->
+  <section id="s16">
+    <div class="sec-head"><span class="sec-num">S16</span><h2 class="sec-title">자기 검증 (5-Layer · Red-Team · 한계)</h2><span class="sec-kicker">SELF-AUDIT</span></div>
+
+    <p>본 섹션은 글로벌 CLAUDE.md "거짓 답변 금지 (5-Layer 답변 품질)" 원칙에 따라 본 기획서 자체의 약점을 먼저 드러낸 것이다.</p>
+
+    <h3>① 사실 검증 (Layer 1)</h3>
+    <div class="layer-grid">
+      <div class="layer-box"><div class="layer-box-head">★ 검증된 사실</div><div class="layer-box-body">통합기획서 v1의 화면·기능 우선순위 인용 (라인 번호 동반). Supabase Free 한도 (500MB DB · 50k MAU)는 공식 문서 기준. Vercel Hobby 100GB 대역폭은 공식 문서 기준.</div></div>
+      <div class="layer-box warn"><div class="layer-box-head">△ 추정 (명시)</div><div class="layer-box-body">"Phase 0 트래픽 DAU ≥ 5"는 대표 통찰 기반 가정. 실제 트래픽은 미검증. "예상 LOC ~8k"는 유사 프로젝트 기반 추정.</div></div>
+      <div class="layer-box fail"><div class="layer-box-head">✕ 미검증 항목 (Week 0~1 해소)</div><div class="layer-box-body"><strong>Next.js 최신 안정 버전의 npm 출시 여부 미확인 (Q31 · 설치 시점 latest lock).</strong> Q31 결정에 따라 Week 1 첫 작업으로 <code>npm view next dist-tags</code> 실행 후 본 문서 S12 업데이트 필요. Tailwind v4와 shadcn/ui의 완전 호환도 Week 1 실측 필요.</div></div>
+    </div>
+
+    <h3>② 구동 테스트 (Layer 2)</h3>
+    <ul>
+      <li><strong>본 문서는 코드를 포함하지 않으며, 구동 테스트는 Phase 0 구현 단계에서 수행된다.</strong> 본 문서 단독으로 "빌드·실행 검증 완료"라고 주장하지 않는다.</li>
+      <li>예시 DDL은 PostgreSQL 15+ 구문 가정. Supabase ap-northeast-2가 현재 15.x인지는 Week 1 첫 마이그레이션 시 <code>SELECT version();</code>으로 확인.</li>
+      <li>계산식 STEP 1~8은 Week 2 Vitest 6 케이스 통과 시점에 검증 완료로 본다.</li>
+    </ul>
+
+    <h3>③ 출처 명시 (Layer 3)</h3>
+    <ul>
+      <li>모든 결정 사항(Q1~Q32)은 본 세션 대화 로그에서 직접 인용. 권고안은 본 문서 작성자(Claude) 책임.</li>
+      <li>통합기획서 v1 인용 시 <code>docs/통합기획서.html</code> 라인 번호 명시.</li>
+      <li>Supabase·Vercel·Next.js 한도는 2026-05-15 기준 공식 문서. Phase 0 진입 시점에 한 번 더 재확인 필요.</li>
+    </ul>
+
+    <h3>④ Red-Teaming (Layer 4) — 본 기획서의 약점</h3>
+    <div class="callout callout-red">
+      <div class="callout-title">자기 비판 5건</div>
+      <ol style="margin:0">
+        <li><strong>"비로그인 누구나" 가정이 트래픽 모델을 너무 단순화했다.</strong> 한국 인바운드 여행사·가이드가 "많이 사용할 것"이라는 대표 통찰은 정성 판단이며, 실제 채택률은 미검증. Phase 0 KPI "DAU ≥ 5"는 매우 보수적 수치. Phase 0 종료 후 실측이 가정과 5배 이상 어긋나면 사업 모델 재검토 필요.</li>
+        <li><strong>"각 인원별 단가"가 핵심 가치라면, 본 문서의 와이어프레임은 정량적 검증 부족.</strong> 결과 화면(P02)에 인원별 4구간 카드를 강조했으나, 실제 사용자가 "성인 178k" 한 숫자만 보는지·4구간을 모두 활용하는지는 유저 테스트 전엔 미지수.</li>
+        <li><strong>RLS 정책의 단순성이 미래 부담을 숨긴다.</strong> Phase 0은 "마스터 read-public + super-admin write"로 끝나지만, Phase 1 회원 도입 시 사용자별 패키지 저장이 추가되면 정책이 30줄 이상으로 확장. 본 문서는 그 마이그레이션 경로를 명시하지 않음.</li>
+        <li><strong>Vercel Hobby 무료 한도가 Phase 0 가정과 충돌 가능.</strong> 대표 통찰이 맞아 트래픽이 빠르게 증가하면 100GB 대역폭은 1~2개월이면 초과 가능. Q8 "무료" 결정이 운영 1개월 안에 깨질 수 있다.</li>
+        <li><strong>본 문서가 6주 일정으로 7 핵심 테이블 + 14 화면 + 엑셀 10 시트 + PDF + PWA + 캐시 + 감사 트리거 + 시드 입력을 모두 담는다.</strong> 1인 개발자 기준 매우 빡빡하다. M2 미달 시 범위 축소 룰(S13 callout)이 사전 합의이지만, 실제 축소 판정 권한·시점은 모호.</li>
+      </ol>
+    </div>
+
+    <h3>⑤ 실행 가능 결론 (Layer 5)</h3>
+    <ul>
+      <li>본 문서 승인 후 Week 0(2026-05-15~17) 3일 안에 환경 준비 4건 완료: GitHub repo · Vercel 프로젝트 · Supabase 프로젝트 · 로컬 Node 20 확인.</li>
+      <li>Week 1 첫날 <code>npm view next dist-tags</code> 결과를 <code>VERSION_LOCK.md</code>에 커밋. 본 문서 S12 업데이트.</li>
+      <li>Week 1 마지막에 시드 데이터 입력 완료 + Vitest 단위 테스트 6 케이스 통과.</li>
+      <li>매주 금요일 17:00 대표에게 진척 보고 (한 줄: M1·M2·M3·M4 중 어디).</li>
+    </ul>
+
+    <h3>한계·미해결 항목</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>항목</th><th>한계</th><th>해결 시점</th></tr></thead>
+      <tbody>
+        <tr><td>Next.js 최신 안정 버전 (Q31 · 설치 시점 latest lock)</td><td>본 문서 작성 시점 미검증</td><td>Week 1 Day 1</td></tr>
+        <tr><td>Tailwind v4 + shadcn/ui 호환</td><td>실측 안 됨</td><td>Week 1 Day 2~3</td></tr>
+        <tr><td>Vercel Hobby 트래픽 한도 도달 시점</td><td>실측 트래픽 0</td><td>Phase 0 운영 첫 2주</td></tr>
+        <tr><td>차량·가이드 단가 정확도</td><td>대표 수기 입력 단가의 시장 적합성</td><td>Phase 0 운영 후 사용자 피드백</td></tr>
+        <tr><td>한국관광공사 TourAPI 활용 가능성</td><td>본 문서 미검토</td><td>Phase 1 기획</td></tr>
+        <tr><td>다국어 메시지 키 추출 비용</td><td>Phase 0 한국어 단독이라 미산정</td><td>Phase 1 기획</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- ★ S18 — v2.0 통합 매트릭스 (16건)                              -->
+  <!-- ============================================================ -->
+  <section id="s18">
+    <div class="sec-head"><span class="sec-num">S18</span><h2 class="sec-title">★ v1.0 → v2.0 통합 매트릭스 (16건)</h2><span class="sec-kicker">INTEGRATION</span></div>
+
+    <p>2026-05-15 v1.0 작성 후 3일간(2026-05-15 ~ 2026-05-18) 누적된 <strong>디자인기획서 v1.0의 16건 결정</strong>을 본 제작기획서 v2.0에 단일 진실 소스로 통합한 결과. 출처 컬럼은 디자인기획서 v1.0 섹션 번호.</p>
+
+    <div class="tbl-wrap"><table>
+      <thead><tr><th style="width:50px">#</th><th>결정 사항</th><th>디자인 출처</th><th>제작기획서 v2.0 반영</th><th>상태</th></tr></thead>
+      <tbody>
+        <tr><td class="num">01</td><td>본질 재정의 — User-Owned · CMS Minimal</td><td>S34</td><td>S05 마스터 9 → user_library 1 통합 · S00 KPI 11→7</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">02</td><td>이메일 인증 (Magic Link) 하이브리드</td><td>S03·S25</td><td>S05 user_library·user_packages owner_id 축 · S02 D34</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">03</td><td>상품 타입 8종 + 장기 모드</td><td>S36</td><td>S07 ProductType 8종 enum · user_packages.product_type · S02 D35</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">04</td><td>인원 유형 2모드 (간단·상세)</td><td>S36</td><td>S07 PartyMode 인터페이스 · S02 D36</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">05</td><td>위치·동선·시간 자동 + 투어 명칭</td><td>S31</td><td>S05 user_library.payload.recommended_stay_min · user_packages.product_name · S02 D37</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">06</td><td>마진 vs 수수료 분리 + 5채널</td><td>S35</td><td>S07 STEP A·B 분리 · STEP 9~12 채널 매트릭스 · sales_channels 시드 5 · S02 D38</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">07</td><td>차량 11종 + DG + 안전 정책</td><td>S39·S41·S42</td><td>S07 vehicleDailyCost·drivingGuideDailyCost 함수 · S05 user_library vehicle payload 5요소 · S02 D39</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">08</td><td>가이드 5권역 언어</td><td>S39</td><td>S05 user_library guide payload language_region·custom_language · S02 D40</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">09</td><td>시즌 월별·기간별 사용자 정의</td><td>S39</td><td>S05 user_library season payload month_index·custom_periods · S02 D41</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">10</td><td>카테고리 8 + 지불 3방식</td><td>S37</td><td>S07 PerPersonItem.paymentType · S05 user_library category payload · S02 D42</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">11</td><td>★ BEP 통합 계산 + OTA 6사</td><td>S41·S42</td><td>S07 STEP 13 BEP 카드 · STEP 14 OTA 매트릭스 · S02 D43</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">12</td><td>5레벨 메모 시스템</td><td>S40</td><td>S05 user_packages.memos JSONB · S02 D44 · S11 시트 10 메모</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">13</td><td>통합 보고서 + 엑셀 10시트 + 공유 6방식</td><td>S38</td><td>S11 출력·공유 v2.0 전면 갱신 · S02 D45</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">14</td><td>AI 보고서 (룰 + Groq Free)</td><td>S26·S39</td><td>S07 STEP 14 결과 → AI 프롬프트 · S15 hallucination 리스크 · S02 D46</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">15</td><td>보안 16 레이어 + CAPTCHA 수식</td><td>S27</td><td>S06 RLS 정책 (owner_id 축) · S15 RLS 리스크 · S02 D47 (S21 Week 5에서 구현)</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+        <tr><td class="num">16</td><td>신규 메인 컬러 #FC2D59 + #00BCB0</td><td>S33</td><td>본 v2.0 문서 헤더·callout·버튼 컬러 · S02 D48 (Tailwind v4 @theme 토큰은 Week 2)</td><td><strong style="color:#00BCB0">반영</strong></td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>통합 영향 요약</h3>
+    <div class="kpi-grid" style="margin-top:14px">
+      <div class="kpi kpi-gold">
+        <div class="kpi-label">통합 완료</div>
+        <div class="kpi-value">16/16</div>
+        <div class="kpi-sub">디자인 v1.0 100% 반영</div>
+      </div>
+      <div class="kpi kpi-teal">
+        <div class="kpi-label">신규 결정 (D33~D48)</div>
+        <div class="kpi-value">16</div>
+        <div class="kpi-sub">S02 G섹션</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">신규 테이블</div>
+        <div class="kpi-value">2</div>
+        <div class="kpi-sub">user_library · user_packages</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">STEP 확장</div>
+        <div class="kpi-value">8 → 14</div>
+        <div class="kpi-sub">BEP·OTA 추가</div>
+      </div>
+    </div>
+
+    <div class="callout callout-gold" style="margin-top:18px">
+      <div class="callout-title">★ 본 통합의 의미</div>
+      <p style="margin:0">v1.0(Schema-First Hybrid) 골격을 유지하면서 <strong>User-Owned 본질·BEP 즉답·OTA 매트릭스·VAT 포함 표기</strong>를 합성. 디자인기획서·통합기획서·본 제작기획서 v2.0 3 문서가 짝을 이루며, 본 문서가 Week 1 코딩의 단일 진실 소스(Single Source of Truth). 이후 변경은 본 문서 v2.1·v2.2 등 PATCH 형태로만 누적.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- ★ S19 — 도메인 용어집 22                                       -->
+  <!-- ============================================================ -->
+  <section id="s19">
+    <div class="sec-head"><span class="sec-num">S19</span><h2 class="sec-title">★ 도메인 용어집 (22 용어)</h2><span class="sec-kicker">GLOSSARY</span></div>
+
+    <p>한국 인바운드 여행업 20년+ 경력 기반 표준 용어. 모든 화면 텍스트·코드 식별자·테스트 케이스 명칭은 본 용어집을 따른다.</p>
+
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>약어·용어</th><th>풀이</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td class="num"><strong>FIT</strong></td><td>Free Independent Traveler</td><td>1~6명 개별 자유 여행객. 맞춤형 일정·DG·1:1 가이드 적합.</td></tr>
+        <tr><td class="num"><strong>GIT</strong></td><td>Group Inclusive Tour</td><td>9~45명 단체 패키지. 차량+가이드+일괄 일정. 시즌·BEP 영향 큼.</td></tr>
+        <tr><td class="num"><strong>SIT</strong></td><td>Special Interest Tour</td><td>테마 투어 (K-POP·미식·역사·종교·의료). 특화 가이드 필요.</td></tr>
+        <tr><td class="num"><strong>DMC</strong></td><td>Destination Management Company</td><td>현지 도매 여행사. B2B 도매 채널의 핵심 거래처(수수료 10% 표준).</td></tr>
+        <tr><td class="num"><strong>OTA</strong></td><td>Online Travel Agency</td><td>온라인 여행 플랫폼 (Klook·Viator·KKday 등). 수수료 22~25%.</td></tr>
+        <tr><td class="num"><strong>DG</strong></td><td>Driving Guide (통역안내사 운전)</td><td>차량+통역안내사 통합 상품. 1~6명 FIT 시장 표준. 가이드 단가 ×1.4 프리미엄.</td></tr>
+        <tr><td class="num"><strong>MICE</strong></td><td>Meeting·Incentive·Convention·Exhibition</td><td>기업 단체 행사. 35~45명+ 대형 버스 필수. 시즌 영향 최소.</td></tr>
+        <tr><td class="num"><strong>BEP</strong></td><td>Break-Even Point (손익분기점)</td><td>채널별 흑자 전환 최소 인원. STEP 13 통합 카드 핵심 수치.</td></tr>
+        <tr><td class="num"><strong>PartyMode</strong></td><td>인원 유형 모드</td><td>simple(성인 통합) / detailed(성인·청소년·유아 체크박스). D36.</td></tr>
+        <tr><td class="num"><strong>AgeTier</strong></td><td>연령 가중치 계층</td><td>adult 1.0 · youth 0.5 · infant 0.0 · senior 0.8 표준. user_library에서 덮어쓰기.</td></tr>
+        <tr><td class="num"><strong>PaymentType</strong></td><td>지불 방식</td><td>included(포함)·free(무료)·customer-paid(손님 개별). D42.</td></tr>
+        <tr><td class="num"><strong>partyShared</strong></td><td>파티 공통 비용</td><td>차량·가이드·DG 일당 합계. STEP 3에서 1인당 분배.</td></tr>
+        <tr><td class="num"><strong>perPerson</strong></td><td>인당 항목</td><td>식사·입장료·체험. AgeTier 가중치 적용 가능.</td></tr>
+        <tr><td class="num"><strong>net margin</strong></td><td>순마진</td><td>원가 대비 첫 단계 마진(기본 12%). 운영 비용 회수 목적.</td></tr>
+        <tr><td class="num"><strong>retail margin</strong></td><td>리테일 마진</td><td>net 후 추가 마진(기본 35%). 영업·예비비.</td></tr>
+        <tr><td class="num"><strong>commission</strong></td><td>채널 수수료</td><td>판매 채널이 떼가는 비율. 자체 0% · 도매 10% · 소매 15% · 에이전트 20%.</td></tr>
+        <tr><td class="num"><strong>card fee</strong></td><td>카드 결제 수수료</td><td>자체 온라인 채널 PG사 평균 2.8%. 그 외 채널 0.</td></tr>
+        <tr><td class="num"><strong>VAT 포함 합계</strong></td><td>부가가치세 10% 포함 합산 금액</td><td>★ 본 PWA 전 화면·전 출력 기본 표기 단위. S20 규칙.</td></tr>
+        <tr><td class="num"><strong>recommended_stay_min</strong></td><td>장소별 권장 체류 시간(분)</td><td>일정 자동 계산의 입력값. D37.</td></tr>
+        <tr><td class="num"><strong>user_library</strong></td><td>사용자 라이브러리</td><td>차량·가이드·관광지·시즌·카테고리 컬렉션. owner_id 격리.</td></tr>
+        <tr><td class="num"><strong>user_packages</strong></td><td>사용자 견적 패키지</td><td>1건의 투어 견적·일정·메모 전체 저장 단위.</td></tr>
+        <tr><td class="num"><strong>share_token</strong></td><td>공유 토큰</td><td>URL 해시(비로그인) 또는 user_packages.share_token(인증). 매직링크 발송 시 사용.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- ★ S20 — VAT 10% 포함 합계 금액 표시 규칙                       -->
+  <!-- ============================================================ -->
+  <section id="s20">
+    <div class="sec-head"><span class="sec-num">S20</span><h2 class="sec-title">★ 금액 표시 규칙 (VAT 10% 포함 합계)</h2><span class="sec-kicker">PRICING DISPLAY</span></div>
+
+    <p>2026-05-18 대표 확정 사항. <strong>본 PWA의 모든 금액은 부가가치세(VAT) 10% 포함 합계로 표기</strong>한다. 별도 표기·세전 금액 표기는 금지. 본 규칙은 화면·엑셀·PDF·공유·API 응답·메모리 캐시 모두에 동일 적용.</p>
+
+    <h3>규칙 7조</h3>
+    <ol style="line-height:1.95;font-size:15px">
+      <li><strong>입력 시점</strong> — 사용자가 user_library에 차량·가이드·식사 단가를 입력할 때 "VAT 10% 포함 합계"를 입력 라벨에 명시한다. 별도 VAT 입력 필드 없음.</li>
+      <li><strong>저장 시점</strong> — DB(user_library.payload·user_packages.computed_cache) 및 localStorage 모든 금액 컬럼은 VAT 포함 합계 그대로 저장. 별도 VAT 컬럼 없음.</li>
+      <li><strong>계산 시점</strong> — STEP 1~14의 모든 중간값·결과값은 VAT 포함 합계 기준. <code>vatRate</code> 변수는 호환성을 위해 유지하되 기본값 0, UI에서는 비노출.</li>
+      <li><strong>출력 시점</strong> — 화면·엑셀·PDF·QR·매직링크 모든 출력에 통화 단위로 <code>"KRW (VAT 10% 포함 합계)"</code> 명시. 시트 머리글 + 표 캡션 + PDF 푸터 3 위치.</li>
+      <li><strong>USD 병기</strong> — USD 환산도 VAT 포함 합계 기준. <code>finalUsd = finalKrw × exchangeRate.krwToUsd</code>. 별도 세전 환산 없음.</li>
+      <li><strong>OTA·B2B 협상가</strong> — 채널 수수료 차감 시 기준값도 VAT 포함 합계. <code>profitPerAdult = netRevenue − tierCost</code>의 양변 모두 VAT 포함 합계.</li>
+      <li><strong>법적 표시</strong> — 외국인 대상이지만 한국 부가세 환급(Tax Refund) 안내는 AI 보고서에 별도 첨부(STEP 14 결과 보강). 본 견적 단가 자체는 항상 VAT 포함.</li>
+    </ol>
+
+    <h3>UI 표기 예시</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>위치</th><th>표기 (✓)</th><th>금지 (✕)</th></tr></thead>
+      <tbody>
+        <tr><td>인원별 단가 카드</td><td><strong>₩178,250</strong> <span style="color:var(--ink-500);font-size:11px">(VAT 10% 포함 합계)</span></td><td><span style="color:#c00">₩162,045 + VAT</span></td></tr>
+        <tr><td>엑셀 시트 머리글</td><td>금액 단위: KRW (VAT 10% 포함 합계)</td><td><span style="color:#c00">단위: KRW (세전)</span></td></tr>
+        <tr><td>PDF 푸터</td><td>본 견적의 모든 금액은 VAT 10% 포함 합계입니다.</td><td><span style="color:#c00">VAT 별도</span></td></tr>
+        <tr><td>API 응답 (JSON)</td><td><code>{"finalKrw": 178250, "vatInclusive": true}</code></td><td><span style="color:#c00"><code>{"net": 162045, "vat": 16205}</code></span></td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>코드 보장 (Vitest)</h3>
+<pre><code><span class="tok-com">// lib/calc/engine.test.ts — S20 규칙 회귀 방지</span>
+<span class="tok-key">test</span>(<span class="tok-str">'모든 결과 금액은 VAT 포함 합계 기준'</span>, () =&gt; {
+  <span class="tok-key">const</span> result = computeAll(<span class="tok-typ">SAMPLE_INPUT</span>);
+  expect(result.vatInclusive).toBe(<span class="tok-num">true</span>);
+  <span class="tok-key">for</span> (<span class="tok-key">const</span> tier <span class="tok-key">of</span> [<span class="tok-str">'adult'</span>, <span class="tok-str">'youth'</span>, <span class="tok-str">'infant'</span>] <span class="tok-key">as const</span>) {
+    expect(result.finalKrw[tier]).toBeGreaterThanOrEqual(<span class="tok-num">0</span>);
+    <span class="tok-com">// 세전·세후 별도 컬럼 부존재 검증</span>
+    expect((result <span class="tok-key">as any</span>).netKrw).toBeUndefined();
+    expect((result <span class="tok-key">as any</span>).vatAmount).toBeUndefined();
+  }
+});</code></pre>
+
+    <div class="callout callout-red">
+      <div class="callout-title">규칙 위반 시 차단</div>
+      <p style="margin:0">PR에서 <code>"VAT 별도"</code>, <code>"net price"</code>, <code>"세전"</code>, <code>"+VAT"</code> 문자열 발견 시 CI가 거부한다. ESLint custom rule 또는 GitHub Actions grep 게이트로 강제.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- ★ S21 — Week 0~1 체크리스트                                    -->
+  <!-- ============================================================ -->
+  <section id="s21">
+    <div class="sec-head"><span class="sec-num">S21</span><h2 class="sec-title">★ Week 0~1 즉시 실행 체크리스트</h2><span class="sec-kicker">KICK-OFF</span></div>
+
+    <p>본 문서 대표 승인 즉시 착수할 작업. 대표 승인 → Week 0(환경 준비 3일) → Week 1 → … → Phase 0 출시(착수 +6주, TBD).</p>
+
+    <h3>Week 0 · 2026-05-19 ~ 05-21 (환경 준비 · 3일)</h3>
+    <ul style="line-height:1.95;font-size:15px">
+      <li>[ ] <strong>GitHub private repo 생성</strong> — <code>tourplan-watertree</code> · main branch 보호 · CODEOWNERS = 대표.</li>
+      <li>[ ] <strong>Vercel 프로젝트 연결</strong> — Hobby 플랜 · GitHub repo 연동 · Preview·Production 도메인 자동.</li>
+      <li>[ ] <strong>Supabase 프로젝트 신규 생성</strong> — Asia Northeast (Seoul · ap-northeast-2) · Free Tier · 프로젝트명 <code>tourplan</code>.</li>
+      <li>[ ] <strong>Supabase 비밀키 4종 ENV 등록</strong> — Vercel: <code>NEXT_PUBLIC_SUPABASE_URL</code>·<code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>(Public) + <code>SUPABASE_SERVICE_ROLE</code>(Server-Only). 로컬: <code>.env.local</code> 동기.</li>
+      <li>[ ] <strong>Resend Free 계정</strong> — 매직링크 발송용. API 키 → Vercel Server-Only ENV.</li>
+      <li>[ ] <strong>Groq Free 계정</strong> — AI 보고서용. API 키 → Vercel Server-Only ENV.</li>
+      <li>[ ] <strong>로컬 Node 20 · npm 확인</strong> — <code>node -v</code>·<code>npm -v</code> 출력 → <code>VERSION_LOCK.md</code> 기록.</li>
+      <li>[ ] <strong>Sentry Free · UptimeRobot 계정</strong> — Week 6 배포 직전 연결. 계정만 사전 생성.</li>
+    </ul>
+
+    <h3>Week 1 · 2026-05-22 ~ 05-28 (스키마·시드·타입 · 7일)</h3>
+    <ul style="line-height:1.95;font-size:15px">
+      <li>[ ] <strong>Day 1</strong> · <code>npm view next dist-tags</code> 실행 결과 기록 → Next.js 프로젝트 부트스트랩(<code>npx create-next-app@latest</code>) → App Router · TypeScript strict · Tailwind v4 · ESLint.</li>
+      <li>[ ] <strong>Day 2</strong> · Supabase CLI 초기화(<code>supabase init</code>) → 마이그레이션 0001 작성: 7 핵심 테이블(admin_users·system_settings·audit_log·sales_channels·ad_slots·inclusion_templates·age_tier_defaults).</li>
+      <li>[ ] <strong>Day 3</strong> · 마이그레이션 0002 작성: user_library·user_packages + GIN 인덱스 → RLS 정책 (auth.uid() = owner_id) → 감사 트리거 → <code>supabase db push</code>.</li>
+      <li>[ ] <strong>Day 4</strong> · <code>supabase gen types typescript</code> 산출물을 <code>types/database.types.ts</code>로 커밋 → 빌드 전 자동 실행 npm 스크립트 등록.</li>
+      <li>[ ] <strong>Day 5</strong> · 시스템 설정 5건 시드 (vat_rate=0.10·default_net_margin=0.12·default_retail_margin=0.35·krw_to_usd=0.00072·exchange_rate_source='manual') + sales_channels 5건 + inclusion_templates 16건(포함 8 + 불포함 8) + age_tier_defaults 4건.</li>
+      <li>[ ] <strong>Day 6</strong> · 사용자 라이브러리 추천 프리셋 5세트 시드 (소형 FIT·중형 GIT·대형 단체·DG 1:1·MICE) → user_library payload 예시 JSON 작성.</li>
+      <li>[ ] <strong>Day 7</strong> · Vitest 환경 셋업 → STEP 1~14 단위 테스트 14 케이스 스켈레톤 작성(<code>describe.skip</code>) → CI(<code>npm test</code>·<code>tsc --noEmit</code>·<code>eslint</code>) 통과 확인.</li>
+    </ul>
+
+    <h3>M1 (Week 1 종료) 검수 기준</h3>
+    <ul>
+      <li>[ ] Supabase Studio에서 9 테이블 + 인덱스 + RLS 정책 모두 확인.</li>
+      <li>[ ] anon 클라이언트로 user_library SELECT 시 0건 응답 (RLS 거부 확인).</li>
+      <li>[ ] 대표 admin_users 1건 등록 후 super-admin 로그인 가능.</li>
+      <li>[ ] <code>types/database.types.ts</code>에 9 테이블 타입 자동 생성 확인.</li>
+      <li>[ ] Vitest 14 스켈레톤 모두 skip 상태 · 빌드 통과.</li>
+      <li>[ ] VERSION_LOCK.md에 Next.js·React·Tailwind·Supabase CLI·Node 버전 명시.</li>
+    </ul>
+
+    <div class="callout callout-gold">
+      <div class="callout-title">M1 미달 시 의사결정</div>
+      <p style="margin:0">Week 1 종료 시점 M1 검수 6 항목 중 4개 미달이면 Week 2 빌더 착수 보류 + 대표 보고. RLS 정책 회귀가 가장 치명적(보안 사고 직결) → 우선 해소.</p>
+    </div>
+  </section>
+
+  <!-- ============ S17 부록 ============ -->
+  <section id="s17">
+    <div class="sec-head"><span class="sec-num">S17</span><h2 class="sec-title">부록·체크리스트</h2><span class="sec-kicker">APPENDIX</span></div>
+
+    <h3>A. Week 6 통합 QA 체크리스트</h3>
+    <h4>공개 화면 (비로그인)</h4>
+    <ul>
+      <li>[ ] / 진입 시 빌더 진입 CTA가 1초 안에 보인다.</li>
+      <li>[ ] /builder에서 성인 18 + 소아 2 입력 시 인원별 단가 4구간이 모두 표시된다.</li>
+      <li>[ ] Day 추가·삭제 시 즉시 재계산된다.</li>
+      <li>[ ] 시즌 변경 시 차량·가이드 비용에만 multiplier가 적용된다.</li>
+      <li>[ ] 마진·VAT 슬라이더 변경 시 즉시 반영된다.</li>
+      <li>[ ] localStorage가 매 3초 자동 저장된다.</li>
+      <li>[ ] 페이지 새로고침 후 작업이 복원된다.</li>
+      <li>[ ] URL 해시 공유 후 다른 브라우저(시크릿 창)에서 복원된다.</li>
+      <li>[ ] 엑셀 다운로드 시 6개 시트가 모두 생성된다.</li>
+      <li>[ ] PDF 인쇄 시 A4 1+N+1 페이지 레이아웃이 깨지지 않는다.</li>
+      <li>[ ] 오프라인 상태에서 캐시된 마스터로 계산 가능하다.</li>
+      <li>[ ] PWA 설치 후 standalone 실행 시 주소창이 사라진다.</li>
+      <li>[ ] 768px 미만 모바일에서 모든 화면이 깨지지 않는다.</li>
+    </ul>
+
+    <h4>관리자 화면 (super-admin)</h4>
+    <ul>
+      <li>[ ] /admin 진입 시 미인증이면 /admin/login으로 리다이렉트된다.</li>
+      <li>[ ] 로그인 후 대시보드에서 마스터 데이터 카운트가 표시된다.</li>
+      <li>[ ] /admin/vehicles에서 차량 INSERT/UPDATE/DELETE가 동작한다.</li>
+      <li>[ ] 동일하게 guides·places·seasons·settings도 동작한다.</li>
+      <li>[ ] 모든 변경이 audit_log에 기록된다.</li>
+      <li>[ ] 로그아웃 후 /admin/* 접근 시 404가 표시된다 (401 아님).</li>
+      <li>[ ] anon 클라이언트로 admin_users·audit_log 조회 시 빈 응답 또는 거부된다.</li>
+    </ul>
+
+    <h4>품질 게이트</h4>
+    <ul>
+      <li>[ ] Lighthouse Performance ≥ 80, PWA ≥ 90, Accessibility ≥ 85.</li>
+      <li>[ ] Vitest 6 케이스 모두 통과.</li>
+      <li>[ ] <code>tsc --noEmit</code> 에러 0건.</li>
+      <li>[ ] ESLint 에러 0건.</li>
+      <li>[ ] 번들 initial size &lt; 300KB gzip.</li>
+      <li>[ ] Sentry Source Maps 업로드 확인.</li>
+      <li>[ ] UptimeRobot 5분 간격 모니터 ACTIVE.</li>
+    </ul>
+
+    <h3>B. 환경 변수 목록</h3>
+<pre><code><span class="tok-com"># Vercel · Public (NEXT_PUBLIC_*)</span>
+NEXT_PUBLIC_SUPABASE_URL=https://&lt;ref&gt;.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=&lt;jwt&gt;
+NEXT_PUBLIC_APP_URL=https://tourplan-watertree.vercel.app
+
+<span class="tok-com"># Vercel · Server-Only (절대 NEXT_PUBLIC_ 접두사 금지)</span>
+SUPABASE_SERVICE_ROLE=&lt;jwt&gt;
+SENTRY_AUTH_TOKEN=&lt;token&gt;
+
+<span class="tok-com"># 로컬 .env.local (gitignore 필수)</span>
+SUPABASE_URL=...
+SUPABASE_SERVICE_ROLE=...
+SUPABASE_ANON_KEY=...</code></pre>
+
+    <h3>C. 디렉터리 구조 (제안)</h3>
+<pre><code>tourplan/
+├─ app/
+│  ├─ layout.tsx
+│  ├─ page.tsx                     <span class="tok-com"># / (랜딩)</span>
+│  ├─ builder/page.tsx             <span class="tok-com"># /builder</span>
+│  ├─ result/page.tsx              <span class="tok-com"># /result</span>
+│  ├─ share/[hash]/page.tsx        <span class="tok-com"># /share/...</span>
+│  ├─ about/page.tsx
+│  ├─ admin/
+│  │  ├─ layout.tsx                <span class="tok-com"># 인증 미들웨어</span>
+│  │  ├─ login/page.tsx
+│  │  ├─ page.tsx                  <span class="tok-com"># 대시보드</span>
+│  │  ├─ vehicles/page.tsx
+│  │  ├─ guides/page.tsx
+│  │  ├─ places/page.tsx
+│  │  ├─ seasons/page.tsx
+│  │  └─ settings/page.tsx
+│  ├─ api/
+│  │  └─ master/route.ts           <span class="tok-com"># SW 캐시 대상</span>
+│  ├─ manifest.ts
+│  └─ sw.ts                        <span class="tok-com"># Serwist</span>
+├─ lib/
+│  ├─ supabase/
+│  │  ├─ server.ts                 <span class="tok-com"># RSC용</span>
+│  │  ├─ client.ts                 <span class="tok-com"># 클라이언트용</span>
+│  │  └─ admin.ts                  <span class="tok-com"># Service Role (서버 전용)</span>
+│  ├─ calc/
+│  │  ├─ engine.ts                 <span class="tok-com"># STEP 1~8</span>
+│  │  ├─ types.ts
+│  │  └─ engine.test.ts            <span class="tok-com"># Vitest 6 케이스</span>
+│  ├─ export/
+│  │  ├─ excel.ts                  <span class="tok-com"># SheetJS</span>
+│  │  └─ print-styles.css
+│  └─ share/
+│     └─ hash.ts                   <span class="tok-com"># lz-string</span>
+├─ components/
+│  ├─ ui/                          <span class="tok-com"># shadcn/ui</span>
+│  ├─ builder/
+│  └─ admin/
+├─ store/
+│  └─ package-store.ts             <span class="tok-com"># zustand + persist</span>
+├─ supabase/
+│  ├─ migrations/
+│  │  ├─ 0001_init.sql
+│  │  ├─ 0002_rls.sql
+│  │  ├─ 0003_audit.sql
+│  │  └─ 0004_seed.sql
+│  └─ seed.sql
+├─ types/
+│  └─ database.types.ts            <span class="tok-com"># supabase gen types 산출물</span>
+├─ public/
+│  ├─ icon-192.png
+│  ├─ icon-512.png
+│  └─ icon-maskable.png
+├─ VERSION_LOCK.md
+├─ next.config.ts
+├─ tailwind.config.ts
+├─ tsconfig.json
+└─ package.json</code></pre>
+
+    <h3>D. 의사결정 권한 매트릭스</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>결정 영역</th><th>권한자</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td>Phase 0 범위 변경</td><td>대표</td><td>—</td></tr>
+        <tr><td>월 예산 한도 변경 (Q8)</td><td>대표 사전 승인</td><td>—</td></tr>
+        <tr><td>일정 지연 1주 이내</td><td>구현자</td><td>대표 보고</td></tr>
+        <tr><td>일정 지연 1주 이상</td><td>대표</td><td>—</td></tr>
+        <tr><td>버그 P0 (서비스 중단)</td><td>구현자 즉시 롤백</td><td>대표 사후 보고</td></tr>
+        <tr><td>스키마 변경 (DDL)</td><td>대표 승인 → 마이그레이션</td><td>—</td></tr>
+        <tr><td>UI 토큰·디자인 변경</td><td>대표</td><td>—</td></tr>
+        <tr><td>외부 API 추가 (Phase 0 외)</td><td>대표 사전 승인</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>E. 본 문서 변경 이력</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>버전</th><th>날짜</th><th>변경 내용</th><th>작성자</th></tr></thead>
+      <tbody>
+        <tr><td>v1.0</td><td>2026-05-15</td><td>초안. Q1~Q32 + 권고 일괄 채택 반영. Schema-First Hybrid · 마스터 11 테이블 · STEP 1~8.</td><td>Claude (대표 승인 대기)</td></tr>
+        <tr><td><strong style="color:#FC2D59">v2.0</strong></td><td><strong>2026-05-18</strong></td><td><strong>Agentic Integration.</strong> 디자인기획서 v1.0의 16건 결정(D33~D48) 통합. 본질 재정의(User-Owned · CMS Minimal · 마스터 11 → 핵심 7 + user_library + user_packages), 계산 STEP 8 → 14(BEP·OTA 추가), 차량 11종 + DG, 5채널 수수료 분리, 5레벨 메모, 출력 10시트 + 공유 6방식, AI 보고서(Groq Free), 보안 16레이어, 신규 컬러 #FC2D59 + #00BCB0, VAT 10% 포함 합계 표시 규칙(S20). 신규 섹션 S18 통합 매트릭스 · S19 도메인 용어집 22 · S20 금액 표시 규칙 · S21 Week 0~1 체크리스트.</td><td>Claude (대표 승인 대기)</td></tr>
+        <tr><td><strong style="color:#FC2D59">v2.1 PATCH</strong></td><td><strong>2026-05-18 (당일 3차 압축)</strong></td><td><strong>Cost-First · Campaign-Second.</strong> 대표 통찰 3차 압축으로 본질 재정의: <strong>1단계 1인 원가표(마진 0) ↔ 2단계 판매 캠페인 시뮬레이션</strong> 분리. <strong>차량 대수 자동 산출</strong>(80명 + 45인승 → 2대). <strong>고정 마진율은 참고사항</strong>, 진짜 결과는 시즌×평균 예약 인원×출발 횟수 캠페인 매트릭스. <strong>판매 목표 인원</strong>이 2단계 핵심 입력. <strong>캘린더·요일·휴무일 모듈</strong> 신규(공공데이터포털 data.go.kr 특일 API). 결정 D49·D50·D51 추가. 리스크 3건 추가(차량 자동 산출 오류·휴무일 데이터·목표 인원 비현실). 디자인기획서 S43 신설. user_library에 holiday 8번째 타입 추가. STEP 6 마진 → STEP M1~M5 캠페인으로 재구성.</td><td>Claude (대표 승인 대기)</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>F. 관련 문서</h3>
+    <ul>
+      <li><a href="통합기획서.html">통합기획서 v1.0</a> — 상위 비전·시장·페르소나·기능 우선순위.</li>
+      <li><a href="제작기획서_v1.0.html">제작기획서 v1.0</a> — 초기 32건 결정 (Schema-First Hybrid 골격).</li>
+      <li><a href="디자인기획서_v1.0.html">디자인기획서 v1.0</a> — 42 섹션 · Claude Design Code · 16건 결정 출처 (S34~S42).</li>
+      <li><a href="index.html">인덱스 페이지</a> — 전체 문서 허브 (v2.0 리프레시 대기).</li>
+    </ul>
+  </section>
+
+  <div class="doc-footer">
+    <div class="doc-footer-grid">
+      <div>
+        <h5>WATERTREE</h5>
+        <p style="margin:0">투어 패키지 단가표 PWA<br>제작 기획서 v2.0 (Agentic Integration)<br>2026-05-18 작성</p>
+      </div>
+      <div>
+        <h5>관련 산출물</h5>
+        <p style="margin:0">상위: 통합기획서 v1.0 + 디자인기획서 v1.0<br>후속: Phase 0 구현 (6주, 2026-05-19 ~ 06-29)<br>다음 검토: Week 1 종료 시 M1 점검</p>
+      </div>
+      <div>
+        <h5>승인 흐름</h5>
+        <p style="margin:0">1. 대표 본 v2.0 검토<br>2. S15 신규 리스크 4건 확인<br>3. 승인 → Week 0 환경 준비 (S21) 즉시 착수</p>
+      </div>
+    </div>
+    <div class="doc-footer-bot">
+      <span>© 2026 WATERTREE · 본 문서는 내부 산출물.</span>
+      <span><strong style="color:#FC2D59">v2.1 PATCH</strong> · 2026-05-18 · 19건 통합 (Cost-First · Campaign-Second)</span>
+    </div>
+  </div>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  var bar = document.getElementById('scrollBar');
+  function update(){
+    var s = window.scrollY || document.documentElement.scrollTop;
+    var h = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    bar.style.width = (h > 0 ? (s / h * 100) : 0) + '%';
+  }
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+
+  var links = document.querySelectorAll('.toc a');
+  var sections = Array.from(document.querySelectorAll('section[id]'));
+  function active(){
+    var y = window.scrollY + 100;
+    var current = sections[0] ? sections[0].id : '';
+    sections.forEach(function(sec){ if(sec.offsetTop <= y) current = sec.id; });
+    links.forEach(function(a){
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  }
+  window.addEventListener('scroll', active, { passive: true });
+  active();
+})();
+</script>
+</body>
+</html>

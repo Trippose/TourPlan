@@ -1,0 +1,2327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>투어 패키지 단가표 PWA — 통합 기획서 v1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============ Design Tokens ============ */
+:root {
+  /* Claude-inspired 2026 Design Tokens — 따뜻한 크림·코랄 베이스 */
+  --claude-cream:#F0EEE6;           /* 기본 배경 (Anthropic 시그니처) */
+  --claude-cream-deep:#E8E4D8;
+  --claude-ivory:#FAF9F5;
+  --claude-coral:#CC785C;           /* 브랜드 Primary */
+  --claude-coral-dark:#B55F48;
+  --claude-coral-light:#E8A590;
+  --claude-coral-pale:#F5D9CC;
+  --claude-ink:#191919;             /* 본문 텍스트 */
+  --claude-ink-soft:#3D3929;
+  --claude-sand:#D4CCB0;
+  --claude-mist:#C4C2B5;
+
+  /* 기존 WATERTREE 팔레트 (병행 유지) */
+  --teal-900:#0b3d3b;
+  --teal-800:#104e4b;
+  --teal-700:#166260;
+  --teal-600:#1e7d79;
+  --teal-500:#2d9e98;
+  --teal-100:#d7efed;
+  --teal-50:#eef9f8;
+  --gold-900:#8a6a18;
+  --gold-700:#b8881f;
+  --gold-500:#d4a843;
+  --gold-300:#e6c676;
+  --gold-100:#f6ecc8;
+  --gold-50:#fbf6e4;
+  --ink-900:#0f172a;
+  --ink-800:#1e293b;
+  --ink-700:#334155;
+  --ink-600:#475569;
+  --ink-500:#64748b;
+  --ink-400:#94a3b8;
+  --ink-300:#cbd5e1;
+  --ink-200:#e2e8f0;
+  --ink-100:#f1f5f9;
+  --ink-50:#f8fafc;
+  --white:#ffffff;
+  --bg-paper:#fafafa;
+  --red-600:#dc2626;
+  --red-100:#fee2e2;
+  --green-700:#15803d;
+  --green-100:#dcfce7;
+  --blue-700:#1d4ed8;
+  --blue-100:#dbeafe;
+  --amber-700:#b45309;
+  --amber-100:#fef3c7;
+  --radius-sm:8px;
+  --radius:12px;
+  --radius-lg:16px;
+  --radius-xl:20px;
+  --shadow-sm:0 2px 6px rgba(11,61,59,.06);
+  --shadow:0 6px 20px rgba(11,61,59,.08);
+  --shadow-lg:0 16px 48px rgba(11,61,59,.12);
+  --fs-xs:12px;
+  --fs-sm:13.5px;
+  --fs-base:15px;
+  --fs-md:16px;
+  --fs-lg:18px;
+  --fs-xl:22px;
+  --fs-2xl:28px;
+  --fs-3xl:36px;
+  --fs-4xl:48px;
+  --fs-hero:64px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+
+body{
+  font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  color:var(--ink-800);
+  background:var(--bg-paper);
+  font-size:var(--fs-base);
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+  letter-spacing:-0.01em;
+}
+
+code,pre,.mono{font-family:'JetBrains Mono','Menlo',monospace;font-feature-settings:"liga" 0;}
+
+/* ============ Layout ============ */
+.app{
+  display:grid;
+  grid-template-columns:280px 1fr;
+  max-width:1440px;
+  margin:0 auto;
+  min-height:100vh;
+}
+
+/* ============ Sidebar TOC ============ */
+.toc{
+  position:sticky;
+  top:0;
+  align-self:start;
+  height:100vh;
+  overflow-y:auto;
+  padding:28px 22px;
+  background:linear-gradient(180deg,var(--teal-900) 0%,var(--teal-800) 100%);
+  color:#dbeeec;
+  border-right:1px solid rgba(0,0,0,.08);
+}
+
+.toc-brand{
+  padding-bottom:18px;
+  border-bottom:1px solid rgba(255,255,255,.12);
+  margin-bottom:18px;
+}
+.toc-brand-title{
+  font-size:15px;
+  font-weight:800;
+  color:#fff;
+  letter-spacing:-0.02em;
+}
+.toc-brand-sub{
+  font-size:11.5px;
+  color:#a9d4d1;
+  margin-top:4px;
+  letter-spacing:0.02em;
+}
+.toc-brand-ver{
+  display:inline-block;
+  margin-top:10px;
+  padding:3px 10px;
+  border-radius:999px;
+  background:var(--gold-500);
+  color:#23180a;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:0.02em;
+}
+
+.toc ol{list-style:none;counter-reset:toc}
+.toc li{counter-increment:toc;margin:2px 0}
+.toc a{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  padding:8px 10px;
+  color:#cfe5e3;
+  text-decoration:none;
+  font-size:13px;
+  border-radius:8px;
+  transition:background .15s,color .15s;
+  line-height:1.5;
+}
+.toc a::before{
+  content:counter(toc,decimal-leading-zero);
+  font-family:'JetBrains Mono',monospace;
+  font-size:10.5px;
+  color:var(--gold-300);
+  flex-shrink:0;
+  padding-top:1px;
+}
+.toc a:hover{background:rgba(255,255,255,.06);color:#fff}
+.toc a.active{background:rgba(212,168,67,.15);color:#fff}
+
+.toc-footer{
+  margin-top:24px;
+  padding-top:16px;
+  border-top:1px solid rgba(255,255,255,.1);
+  font-size:11px;
+  color:#8fb9b6;
+  line-height:1.7;
+}
+
+/* ============ Main ============ */
+main{
+  padding:0 56px 120px;
+  background:var(--bg-paper);
+}
+
+/* ============ Hero (Cover) ============ */
+.hero{
+  margin:-1px -56px 64px;
+  padding:100px 72px 80px;
+  background:
+    radial-gradient(ellipse at 85% 10%,rgba(212,168,67,.22) 0%,transparent 55%),
+    radial-gradient(ellipse at 10% 90%,rgba(45,158,152,.25) 0%,transparent 55%),
+    linear-gradient(135deg,var(--teal-900) 0%,var(--teal-700) 100%);
+  color:#fff;
+  position:relative;
+  overflow:hidden;
+}
+.hero::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+  background-size:48px 48px;
+  pointer-events:none;
+}
+.hero-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:7px 16px;
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:999px;
+  font-size:12.5px;
+  color:#f6ecc8;
+  letter-spacing:0.05em;
+  backdrop-filter:blur(8px);
+}
+.hero-badge-dot{
+  width:8px;height:8px;
+  border-radius:50%;
+  background:var(--gold-500);
+  box-shadow:0 0 0 4px rgba(212,168,67,.3);
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.6}}
+
+.hero h1{
+  font-size:var(--fs-hero);
+  font-weight:900;
+  line-height:1.12;
+  letter-spacing:-0.035em;
+  margin:24px 0 18px;
+  position:relative;
+}
+.hero h1 .accent{color:var(--gold-300)}
+.hero-sub{
+  font-size:var(--fs-xl);
+  color:#d5ebe9;
+  font-weight:400;
+  line-height:1.55;
+  max-width:900px;
+  position:relative;
+}
+.hero-meta{
+  display:flex;
+  gap:36px;
+  margin-top:56px;
+  padding-top:32px;
+  border-top:1px solid rgba(255,255,255,.15);
+  position:relative;
+  flex-wrap:wrap;
+}
+.hero-meta-item{display:flex;flex-direction:column;gap:4px}
+.hero-meta-label{font-size:11px;color:#8ab5b2;letter-spacing:0.12em;text-transform:uppercase;font-weight:600}
+.hero-meta-value{font-size:16px;color:#fff;font-weight:600}
+
+/* ============ Section ============ */
+section{scroll-margin-top:24px;margin-bottom:92px}
+section:last-of-type{margin-bottom:40px}
+
+.sec-head{
+  display:flex;
+  align-items:baseline;
+  gap:18px;
+  margin-bottom:36px;
+  padding-bottom:18px;
+  border-bottom:2px solid var(--teal-900);
+}
+.sec-num{
+  font-family:'JetBrains Mono',monospace;
+  font-size:14px;
+  color:var(--gold-700);
+  font-weight:700;
+  letter-spacing:0.05em;
+}
+.sec-title{
+  font-size:var(--fs-3xl);
+  font-weight:800;
+  color:var(--teal-900);
+  letter-spacing:-0.025em;
+  flex:1;
+  line-height:1.2;
+}
+.sec-kicker{
+  font-size:12.5px;
+  color:var(--ink-500);
+  font-weight:500;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+}
+
+h3{
+  font-size:var(--fs-xl);
+  font-weight:700;
+  color:var(--teal-800);
+  margin:40px 0 16px;
+  letter-spacing:-0.02em;
+}
+h4{
+  font-size:var(--fs-lg);
+  font-weight:700;
+  color:var(--teal-700);
+  margin:28px 0 12px;
+  letter-spacing:-0.015em;
+}
+h5{
+  font-size:var(--fs-base);
+  font-weight:700;
+  color:var(--ink-800);
+  margin:20px 0 8px;
+  letter-spacing:-0.01em;
+}
+
+p{margin:0 0 14px;color:var(--ink-700)}
+p strong{color:var(--teal-800);font-weight:700}
+ul,ol{margin:0 0 16px;padding-left:22px;color:var(--ink-700)}
+li{margin:6px 0;line-height:1.75}
+
+a{color:var(--teal-600);text-decoration:underline;text-decoration-color:rgba(45,158,152,.3);text-underline-offset:3px}
+a:hover{text-decoration-color:var(--teal-600)}
+
+hr{border:0;height:1px;background:var(--ink-200);margin:32px 0}
+
+/* ============ Components ============ */
+.callout{
+  padding:24px 28px;
+  border-radius:var(--radius);
+  background:var(--teal-50);
+  border-left:4px solid var(--teal-600);
+  margin:24px 0;
+}
+.callout-title{
+  font-weight:700;
+  color:var(--teal-800);
+  margin-bottom:8px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.callout-gold{background:var(--gold-50);border-left-color:var(--gold-700)}
+.callout-gold .callout-title{color:var(--gold-900)}
+.callout-red{background:var(--red-100);border-left-color:var(--red-600)}
+.callout-red .callout-title{color:var(--red-600)}
+.callout-green{background:var(--green-100);border-left-color:var(--green-700)}
+.callout-green .callout-title{color:var(--green-700)}
+.callout-blue{background:var(--blue-100);border-left-color:var(--blue-700)}
+.callout-blue .callout-title{color:var(--blue-700)}
+
+.highlight-quote{
+  padding:32px 40px;
+  border-radius:var(--radius-lg);
+  background:linear-gradient(135deg,var(--teal-900) 0%,var(--teal-700) 100%);
+  color:#fff;
+  font-size:var(--fs-xl);
+  font-weight:500;
+  line-height:1.6;
+  letter-spacing:-0.015em;
+  margin:28px 0;
+  position:relative;
+  box-shadow:var(--shadow);
+}
+.highlight-quote::before{
+  content:'"';
+  position:absolute;
+  top:-8px;left:18px;
+  font-size:80px;
+  color:var(--gold-500);
+  font-family:Georgia,serif;
+  line-height:1;
+}
+.highlight-quote .accent{color:var(--gold-300)}
+
+/* Cards Grid */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin:24px 0}
+.card{
+  padding:24px;
+  background:var(--white);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);
+  border-top:3px solid var(--teal-600);
+  transition:transform .15s,box-shadow .15s;
+}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.card-label{font-size:11px;color:var(--ink-500);letter-spacing:0.1em;text-transform:uppercase;font-weight:700}
+.card-title{font-size:var(--fs-lg);font-weight:700;color:var(--teal-800);margin:6px 0 10px}
+.card-body{font-size:var(--fs-sm);color:var(--ink-600);line-height:1.65}
+.card-gold{border-top-color:var(--gold-500)}
+.card-red{border-top-color:var(--red-600)}
+.card-blue{border-top-color:var(--blue-700)}
+
+/* KPI Big */
+.kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:16px;
+  margin:24px 0;
+}
+.kpi{
+  padding:22px 24px;
+  background:var(--white);
+  border-radius:var(--radius);
+  border:1px solid var(--ink-200);
+}
+.kpi-label{font-size:12px;color:var(--ink-500);font-weight:600;letter-spacing:0.05em}
+.kpi-value{font-size:32px;font-weight:800;color:var(--teal-800);letter-spacing:-0.02em;margin:4px 0;font-family:'JetBrains Mono',monospace}
+.kpi-sub{font-size:12px;color:var(--ink-500)}
+.kpi-gold{background:linear-gradient(135deg,#fffdf7 0%,#fbf6e4 100%);border-color:var(--gold-300)}
+.kpi-gold .kpi-value{color:var(--gold-900)}
+.kpi-teal{background:linear-gradient(135deg,var(--teal-50) 0%,var(--teal-100) 100%);border-color:var(--teal-500)}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;margin:20px 0;border-radius:var(--radius);border:1px solid var(--ink-200);background:#fff}
+table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+thead{background:var(--teal-900);color:#fff}
+th{padding:14px 18px;text-align:left;font-weight:700;letter-spacing:-0.005em;font-size:13px}
+td{padding:12px 18px;border-top:1px solid var(--ink-200);vertical-align:top;color:var(--ink-700)}
+tbody tr:hover{background:var(--ink-50)}
+td strong{color:var(--teal-800)}
+.phase-row{background:var(--teal-50)}
+.phase-row td{font-weight:600;color:var(--teal-800)}
+
+/* Code Block */
+pre{
+  background:#0f172a;
+  color:#e2e8f0;
+  padding:24px 28px;
+  border-radius:var(--radius);
+  overflow-x:auto;
+  font-size:13px;
+  line-height:1.65;
+  margin:16px 0 20px;
+  border-left:3px solid var(--gold-500);
+  box-shadow:var(--shadow);
+}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+code{
+  background:var(--ink-100);
+  color:var(--teal-800);
+  padding:2px 7px;
+  border-radius:5px;
+  font-size:0.88em;
+  font-weight:500;
+}
+.tok-key{color:#7dd3fc}
+.tok-str{color:#bef264}
+.tok-num{color:#fbbf24}
+.tok-com{color:#64748b;font-style:italic}
+.tok-typ{color:#f472b6}
+.tok-op{color:#cbd5e1}
+
+/* Timeline */
+.timeline{position:relative;padding-left:40px;margin:28px 0}
+.timeline::before{
+  content:'';
+  position:absolute;
+  left:12px;top:0;bottom:0;
+  width:2px;
+  background:linear-gradient(180deg,var(--teal-600) 0%,var(--gold-500) 100%);
+}
+.timeline-item{position:relative;margin-bottom:28px}
+.timeline-item::before{
+  content:'';
+  position:absolute;
+  left:-34px;top:8px;
+  width:12px;height:12px;
+  border-radius:50%;
+  background:var(--white);
+  border:3px solid var(--teal-600);
+  box-shadow:0 0 0 3px rgba(45,158,152,.15);
+}
+.timeline-item.milestone::before{
+  background:var(--gold-500);
+  border-color:var(--gold-900);
+  box-shadow:0 0 0 3px rgba(212,168,67,.25);
+}
+.timeline-label{
+  display:inline-block;
+  padding:3px 10px;
+  background:var(--teal-100);
+  color:var(--teal-800);
+  border-radius:999px;
+  font-size:11.5px;
+  font-weight:700;
+  letter-spacing:0.02em;
+  margin-bottom:6px;
+}
+.timeline-title{font-weight:700;color:var(--teal-900);font-size:var(--fs-md);margin-bottom:4px}
+.timeline-body{font-size:var(--fs-sm);color:var(--ink-600);line-height:1.65}
+
+/* Persona */
+.persona{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:20px;
+  padding:22px 24px;
+  background:#fff;
+  border-radius:var(--radius);
+  border:1px solid var(--ink-200);
+  margin:16px 0;
+}
+.persona-avatar{
+  width:64px;height:64px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--teal-600),var(--teal-800));
+  color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;
+  font-weight:700;
+  flex-shrink:0;
+}
+.persona-name{font-weight:700;color:var(--teal-900);font-size:var(--fs-md)}
+.persona-meta{font-size:12px;color:var(--ink-500);margin-bottom:8px}
+.persona-need{font-size:var(--fs-sm);color:var(--ink-700)}
+.persona-need b{color:var(--teal-800)}
+
+/* Wireframe */
+.wire{
+  padding:24px;
+  background:#fff;
+  border:1px solid var(--ink-200);
+  border-radius:var(--radius);
+  margin:20px 0;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12.5px;
+  color:var(--ink-700);
+  line-height:1.55;
+  white-space:pre;
+  overflow-x:auto;
+}
+
+/* Tag */
+.tag{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:6px;
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:0.02em;
+  margin-right:4px;
+  margin-bottom:4px;
+}
+.tag-teal{background:var(--teal-100);color:var(--teal-800)}
+.tag-gold{background:var(--gold-100);color:var(--gold-900)}
+.tag-red{background:var(--red-100);color:var(--red-600)}
+.tag-blue{background:var(--blue-100);color:var(--blue-700)}
+.tag-gray{background:var(--ink-100);color:var(--ink-700)}
+.tag-green{background:var(--green-100);color:var(--green-700)}
+
+/* Math Formula */
+.formula{
+  padding:24px 28px;
+  background:linear-gradient(135deg,#fff 0%,var(--teal-50) 100%);
+  border:1px solid var(--teal-500);
+  border-left-width:4px;
+  border-radius:var(--radius);
+  margin:20px 0;
+  font-family:'JetBrains Mono',monospace;
+  font-size:14px;
+  line-height:2;
+  color:var(--ink-800);
+  overflow-x:auto;
+}
+.formula .lbl{color:var(--ink-500);font-size:11.5px;display:block;margin-top:14px;margin-bottom:2px;font-family:'Noto Sans KR';letter-spacing:0.05em;text-transform:uppercase;font-weight:600}
+.formula .lbl:first-child{margin-top:0}
+.formula .op{color:var(--teal-700);font-weight:700}
+.formula .var{color:var(--gold-900);font-weight:600}
+.formula .com{color:var(--ink-400);font-style:italic}
+
+/* Risk */
+.risk-table tr td:first-child{font-weight:700;color:var(--red-600);width:180px}
+.risk-table tr td:nth-child(2){color:var(--ink-700);width:35%}
+.risk-table tr td:nth-child(3){color:var(--teal-700);font-weight:500}
+
+/* Metric row */
+.metric-split{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin:16px 0;
+}
+.metric-box{
+  padding:18px 22px;
+  border-radius:var(--radius);
+  background:#fff;
+  border:1px solid var(--ink-200);
+}
+.metric-box h5{margin-top:0;color:var(--teal-800)}
+.metric-box ul{padding-left:18px;margin:0}
+
+/* Progress */
+.progress{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:2px;
+  margin:10px 0 26px;
+  background:var(--ink-200);
+  border-radius:4px;
+  overflow:hidden;
+  height:6px;
+}
+.progress > div{height:100%;background:var(--teal-500)}
+.progress > div.future{background:var(--ink-300)}
+.progress > div.current{background:var(--gold-500)}
+
+/* Footer */
+.doc-footer{
+  margin:120px -56px -120px;
+  padding:48px 72px;
+  background:var(--ink-900);
+  color:var(--ink-300);
+  font-size:13px;
+  line-height:1.8;
+}
+.doc-footer h5{color:var(--gold-300);margin-bottom:12px;font-size:13px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700}
+.doc-footer-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;margin-bottom:32px}
+.doc-footer-bot{padding-top:24px;border-top:1px solid rgba(255,255,255,.1);color:var(--ink-400);font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+
+/* Responsive */
+@media (max-width:1024px){
+  .app{grid-template-columns:1fr}
+  .toc{position:static;height:auto;max-height:none}
+  .toc a{font-size:14px}
+  main{padding:0 32px 80px}
+  .hero{margin:-1px -32px 48px;padding:64px 40px}
+  .hero h1{font-size:40px}
+  .hero-sub{font-size:17px}
+  .doc-footer{margin:80px -32px -80px;padding:32px 40px}
+  .doc-footer-grid{grid-template-columns:1fr;gap:24px}
+  .metric-split{grid-template-columns:1fr}
+  .sec-title{font-size:24px}
+}
+@media (max-width:640px){
+  main{padding:0 20px 80px}
+  .hero{margin:-1px -20px 40px;padding:48px 24px}
+  .hero h1{font-size:32px}
+  .hero-sub{font-size:15px}
+  .doc-footer{margin:64px -20px -80px;padding:28px 24px}
+}
+
+/* Print */
+@media print{
+  @page{size:A4;margin:15mm}
+  body{background:#fff;font-size:10.5pt}
+  .app{display:block}
+  .toc{display:none}
+  main{padding:0}
+  .hero{margin:0 0 24px;padding:48px 32px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  section{page-break-inside:avoid;margin-bottom:32px}
+  .sec-head{page-break-after:avoid}
+  h3,h4,h5{page-break-after:avoid}
+  .callout,.card,.kpi,.formula,pre,.tbl-wrap,.highlight-quote{page-break-inside:avoid}
+  .doc-footer{margin:24px 0 0;padding:24px}
+  a{color:var(--teal-700)}
+}
+
+/* Scroll Indicator */
+.scroll-indicator{
+  position:fixed;top:0;left:0;right:0;
+  height:3px;
+  background:rgba(0,0,0,0);
+  z-index:100;
+}
+.scroll-indicator-bar{
+  height:100%;
+  background:linear-gradient(90deg,var(--teal-600),var(--gold-500));
+  width:0;
+  transition:width .05s linear;
+}
+</style>
+</head>
+<body>
+
+<div class="scroll-indicator"><div class="scroll-indicator-bar" id="scrollBar"></div></div>
+
+<div class="app">
+
+  <!-- ========== TOC SIDEBAR ========== -->
+  <aside class="toc">
+    <div class="toc-brand">
+      <div class="toc-brand-title">투어 패키지 단가표 PWA</div>
+      <div class="toc-brand-sub">Tour Pricing &amp; Course Planner SaaS</div>
+      <div class="toc-brand-ver">기획서 v1.0 · 2026.04</div>
+    </div>
+    <ol>
+      <li><a href="#s01">경영진 요약</a></li>
+      <li><a href="#s02">비전 &amp; 배경</a></li>
+      <li><a href="#s03">시장 분석</a></li>
+      <li><a href="#s04">타깃 &amp; 페르소나</a></li>
+      <li><a href="#s05">핵심 가치 제안</a></li>
+      <li><a href="#s06">4단계 로드맵</a></li>
+      <li><a href="#s07">데이터 모델</a></li>
+      <li><a href="#s08">계산 공식 &amp; 예시</a></li>
+      <li><a href="#s09">화면 구성</a></li>
+      <li><a href="#s10">수익 모델 4종</a></li>
+      <li><a href="#s11">인증 &amp; 공유</a></li>
+      <li><a href="#s12">기술 스택</a></li>
+      <li><a href="#s13">디렉토리 구조</a></li>
+      <li><a href="#s14">검증 &amp; QA</a></li>
+      <li><a href="#s15">선행 준비</a></li>
+      <li><a href="#s16">리스크 &amp; 대응</a></li>
+      <li><a href="#s17">KPI &amp; 성공 지표</a></li>
+      <li><a href="#s18">다음 단계</a></li>
+    </ol>
+    <div class="toc-footer">
+      © 워터트리(WATERTREE)<br>
+      Confidential &amp; Proprietary<br>
+      자체 제작 · 무료 공개 서비스
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ========== HERO ========== -->
+    <div class="hero">
+      <span class="hero-badge"><span class="hero-badge-dot"></span> 통합 기획서 · CONFIDENTIAL</span>
+      <h1>외국인 <span class="accent">투어 패키지</span><br>단가표 &amp; 코스 기획 <span class="accent">SaaS PWA</span></h1>
+      <p class="hero-sub">차량·가이드(공통비) + 관광지 체험비(1인당) + 인원수(1~1000명)를 조합하면<br>
+      <strong style="color:#fff">1인 원가·공급가·판매가·수익률·총 마진</strong>이 실시간으로 나오는 대시보드.<br>
+      카카오 지도로 자동 거리·시간 산출, PDF·엑셀·URL·QR로 즉시 공유.</p>
+      <div class="hero-meta">
+        <div class="hero-meta-item"><span class="hero-meta-label">프로젝트</span><span class="hero-meta-value">Tour Pricing PWA</span></div>
+        <div class="hero-meta-item"><span class="hero-meta-label">주관</span><span class="hero-meta-value">WATERTREE · 자체 제작</span></div>
+        <div class="hero-meta-item"><span class="hero-meta-label">단계</span><span class="hero-meta-value">Phase 0 → 3 (4단계)</span></div>
+        <div class="hero-meta-item"><span class="hero-meta-label">첫 출시</span><span class="hero-meta-value">내부 MVP · 2~3주</span></div>
+        <div class="hero-meta-item"><span class="hero-meta-label">수익 모델</span><span class="hero-meta-value">4종 결합</span></div>
+        <div class="hero-meta-item"><span class="hero-meta-label">문서 버전</span><span class="hero-meta-value">v1.0 · 2026-04-21</span></div>
+      </div>
+    </div>
+
+    <!-- ========== 01 경영진 요약 ========== -->
+    <section id="s01">
+      <div class="sec-head">
+        <span class="sec-num">01</span>
+        <div>
+          <span class="sec-kicker">Executive Summary</span>
+          <div class="sec-title">경영진 요약</div>
+        </div>
+      </div>
+
+      <div class="highlight-quote">
+        <span class="accent">"상품 짤 때마다 계산하기 너무 귀찮고 힘들고 금액이 전혀 안 맞아서"</span> — 워터트리 내부의 원체험에서 시작. 우리도 필요한 기능이고, 같은 통증을 다른 인바운드 여행사들도 매일 겪고 있다. 워터트리가 <span class="accent">자체 제작 · 무료 공개</span>로 이 통증을 걷어낸다.
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi kpi-teal">
+          <div class="kpi-label">시장 규모</div>
+          <div class="kpi-value">~2,000</div>
+          <div class="kpi-sub">한국 인바운드 여행사 (관광협회 등록)</div>
+        </div>
+        <div class="kpi kpi-gold">
+          <div class="kpi-label">Phase 0 출시</div>
+          <div class="kpi-value">2–3주</div>
+          <div class="kpi-sub">내부 MVP · 80% 원칙</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">수익 모델</div>
+          <div class="kpi-value">4종</div>
+          <div class="kpi-sub">광고·상품광고·구독·리포트 (단계 도입)</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">연 고정비</div>
+          <div class="kpi-value">~2만원</div>
+          <div class="kpi-sub">도메인만 · 나머지 전부 무료 티어</div>
+        </div>
+      </div>
+
+      <h3>왜 지금인가</h3>
+      <ul>
+        <li><strong>엑셀 수식의 한계 (현장 직접 관찰)</strong> — 여행사들이 자체 제작한 IF·VLOOKUP 수식 뒤엉킨 시트를 매일 쓰고 있음. 눈으로 보기에도 엄청 복잡. 실수 1번이 1인당 수만원 오차. <strong>대체 시장이 이미 입증됨.</strong></li>
+        <li><strong>AI·노코드 붐</strong> — 기획자가 코드 없이 바로 가격표를 뽑고 공유하는 경험이 표준 기대치가 됨.</li>
+        <li><strong>인바운드 V자 회복</strong> — 2025년 이후 동남아·일본·중국 관광객 재확대, 패키지 수요 폭증.</li>
+        <li><strong>B2B 도매 경쟁 심화</strong> — 공급가·판매가를 즉석에서 보여줄 수 있는 파트너가 거래에서 유리.</li>
+        <li><strong>경쟁 공백</strong> — 한국 인바운드 특화 단가 SaaS는 현재 시장에 없음. 선점자가 표준이 됨.</li>
+      </ul>
+
+      <h3>한눈에 보는 4단계</h3>
+      <div class="progress"><div class="current"></div><div class="future"></div><div class="future"></div><div class="future"></div></div>
+      <div class="cards">
+        <div class="card"><div class="card-label">Phase 0 · 2~3주</div><div class="card-title">내부 MVP</div><div class="card-body">워터트리 기획자용 단가 계산기. PWA·카카오지도·PDF·공유 URL. 로그인·DB 없음. 수익 없음.</div></div>
+        <div class="card card-blue"><div class="card-label">Phase 1 · +3~4주</div><div class="card-title">SaaS 전환 (무료 공개)</div><div class="card-body">Supabase 인증 + 패키지 클라우드 저장. 닉네임 기반 공유. CMS 시작. <strong>광고·결제 없음</strong> — 무료로 성장에만 집중.</div></div>
+        <div class="card card-gold"><div class="card-label">Phase 2 · +4~6주</div><div class="card-title">수익화 (AdSense 시작)</div><div class="card-body">Google AdSense 배치 · 워터트리 상품 광고 슬롯 · 공개 피드 · SEO 최적화. 프리미엄 구독은 MAU 5,000 검증 후 도입.</div></div>
+        <div class="card card-red"><div class="card-label">Phase 3 · +6~8주</div><div class="card-title">데이터 비즈니스</div><div class="card-body">집계 리포트 판매(관광공사·대형 OTA) · 인기 코스 TOP 100 · 계절 트렌드.</div></div>
+      </div>
+
+    </section>
+
+    <!-- ========== 02 비전 & 배경 ========== -->
+    <section id="s02">
+      <div class="sec-head">
+        <span class="sec-num">02</span>
+        <div>
+          <span class="sec-kicker">Vision &amp; Background</span>
+          <div class="sec-title">비전 &amp; 배경</div>
+        </div>
+      </div>
+
+      <h3>문제 정의 — 원체험 + 현장 관찰</h3>
+      <div class="callout callout-red" style="font-size:17px;line-height:1.7">
+        <div class="callout-title" style="font-size:14px">현장의 목소리 ① — 워터트리 내부 (대표)</div>
+        "상품 짤 때마다 <strong>계산하기 너무 귀찮고 힘들고</strong>, <strong>금액이 전혀 안 맞아서</strong> 매번 다시 해야 한다.<br>
+        이걸 다른 여행사들도 똑같이 느끼고 있을 것이다."
+      </div>
+
+      <div class="callout callout-red" style="font-size:17px;line-height:1.7;margin-top:8px">
+        <div class="callout-title" style="font-size:14px">현장의 목소리 ② — 다른 여행사 관찰 (Field Evidence)</div>
+        "어떤 여행사는 이런 화면이 없어서 <strong>엑셀로 수식을 만들어서 계산하고 사용하고 있던데, 엄청 복잡해 보였다.</strong>"<br>
+        <span style="font-size:13.5px;color:var(--ink-600);font-style:italic">→ 시장 가설이 아닌 <strong>실제 관찰 증거(Market Validation)</strong>. 현장에서 IF·VLOOKUP·SUMPRODUCT가 수식 수십 개로 얽힌 시트를 매일 쓰고 있다. 이 복잡성을 한 화면으로 대체하는 것이 우리 제품의 존재 이유.</span>
+      </div>
+
+      <p>워터트리 상품기획팀은 외국인 대상 패키지를 구성할 때마다 <strong>엑셀 시트에 의존</strong>한다. 차량·가이드·관광지 단가를 손으로 조합해 원가를 산출하며, 인원수가 10명 → 20명으로 바뀌면 공통비 분담 로직을 전부 재계산해야 한다. 언어별 가이드 단가(영/일/중/대만/러/몽)가 수시로 변동하고, 관광지 추가·삭제마다 행을 밀고 당긴다. 기획 속도가 떨어지고, 실수 하나가 <strong>1인당 수만원 오차</strong>로 이어진다. 금액이 안 맞아 재작성하는 과정만 하루 수 시간.</p>
+
+      <p>이것은 워터트리만의 문제가 아니다. 한국 인바운드 여행사 2,000여 곳, 오프라인 여행사 수천 곳, 프리랜서 가이드 수만 명이 <strong>같은 도구로 같은 고통</strong>을 반복하고 있다. 이 시장에 맞는 SaaS는 없다. 있는 것은 일반 회계 소프트웨어, 엑셀, 클룩·트립어드바이저 같은 고객 대상 OTA뿐.</p>
+
+      <div class="callout callout-gold">
+        <div class="callout-title">★ 자체 제작 + 무료 공개 — 이중 동기</div>
+        <strong>① 우리도 필요한 기능</strong>: 워터트리 내부 기획팀이 매일 쓸 도구. 외주 없이 <strong>자체 제작</strong>.<br>
+        <strong>② 같은 문제는 업계 공통</strong>: 우리가 해결하면 다른 여행사들도 쓸 것. 그래서 <strong>무료 공개</strong>. 서비스를 팔아 돈을 벌지 않고, 업계 표준 도구로 만들어 별도 수익(광고·데이터 리포트)을 얻는다.<br>
+        <strong>③ 오프라인 영업 안 함</strong>: 기존 B2B 네트워크 동원 없이 <strong>100% 검색 유입</strong>으로만 성장. 마케팅비 0원.
+      </div>
+
+      <h3>최종 비전</h3>
+      <p>인바운드 여행사·오프라인 여행사·상품기획자가 <strong>로그인 → 코스 설계 → 단가표 → 공유</strong>를 10분 안에 끝내는 PWA. 모바일·PC·태블릿 어디서나 실시간 동기화, 오프라인에서도 동작, 카톡·이메일로 즉시 공유. 워터트리는 자체 기획 속도를 올리고, 공개 사용자는 무료로 도구를 쓰며, <strong>검색 자연 유입으로 수만 사용자가 쌓이면</strong> 광고·상품 유통·데이터 리포트로 수익을 창출한다.</p>
+
+      <h3>운영 철학</h3>
+      <ul>
+        <li><strong>80% 원칙</strong> — 기술 완벽보다 빠른 시장 출시. Phase 0은 2~3주로 내부 사용 검증.</li>
+        <li><strong>연 고정비 ~2만원</strong> — 도메인만 구매. Supabase·Vercel·카카오·Sentry 전부 무료 티어.</li>
+        <li><strong>무료 공개</strong> — 서비스 이용은 평생 무료. 수익은 광고·리포트로만.</li>
+        <li><strong>검색 유입 Only</strong> — 오프라인 영업·홍보·B2B 네트워크 동원 없음. SEO와 서비스 자체 가치로만 성장.</li>
+        <li><strong>AI로 개발비 0원</strong> — Claude 기반 AI 개발. 외주 없음.</li>
+      </ul>
+    </section>
+
+    <!-- ========== 03 시장 분석 ========== -->
+    <section id="s03">
+      <div class="sec-head">
+        <span class="sec-num">03</span>
+        <div>
+          <span class="sec-kicker">Market Analysis</span>
+          <div class="sec-title">시장 분석</div>
+        </div>
+      </div>
+
+      <h3>한국 인바운드 관광 시장</h3>
+      <p>한국을 방문한 외래 관광객은 2019년 기준 1,750만 명이었고, 2020~2022 팬데믹 기간 급감 후 2024년부터 V자 회복. 2025년 주요 지표:</p>
+      <ul>
+        <li>외래 관광객 약 1,800만 명 (문화체육관광부 예상)</li>
+        <li>한국관광협회 등록 인바운드 여행사 <strong>약 2,000개</strong></li>
+        <li>등록 가이드(관광통역 안내사) <strong>약 30,000명</strong></li>
+        <li>주요 타깃 국가: 중국·일본·대만·동남아(태국·베트남·인니·필리핀)·러시아·몽골</li>
+      </ul>
+
+      <h3>경쟁 환경</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>구분</th><th>서비스</th><th>한계점</th></tr></thead>
+          <tbody>
+            <tr><td><strong>일반 엑셀 템플릿</strong><br><em style="font-size:12px;color:var(--red-600)">★ 현장 관찰 확인</em></td><td>MS Excel / Google Sheets</td><td><strong>실제 관찰</strong>: 여행사들이 IF·VLOOKUP·SUMPRODUCT 뒤엉킨 복잡한 시트 자체 제작해 사용 중. 공통비 분담 수식 직접 작성, 인원 변동 시 수식 망가짐, 공유 번거로움, 모바일 UX 부적합. <strong>엑셀 자체가 우리의 최대 경쟁자이자 가장 큰 기회.</strong></td></tr>
+            <tr><td><strong>고객 대상 OTA</strong></td><td>Klook · Trip.com · KKday</td><td>완성된 상품 판매 목적, 기획·원가·마진 기능 없음. B2B용이 아님</td></tr>
+            <tr><td><strong>회계 ERP</strong></td><td>더존·영림원</td><td>정산·세금계산서 중심. 상품 기획 국면 단가 계산·시뮬레이션 기능 없음</td></tr>
+            <tr><td><strong>해외 유사 SaaS</strong></td><td>Bókun · TourCMS</td><td>영문 중심, 한국 인바운드 특수성(카카오 지도·한국어·원화 기준·VAT) 미반영, 월 50~200달러 고가</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">시장 공백 (Market Gap)</div>
+        한국어 UI + 카카오 지도 + 원화/VAT + B2B/B2C 2-트랙 단가 + 무료+프리미엄 + PWA — 이 조합은 <strong>단 하나도</strong> 존재하지 않음. 진입 장벽 낮고 선점 이득 큼.
+      </div>
+
+      <h3>차별화 포지셔닝</h3>
+      <div class="cards">
+        <div class="card"><div class="card-label">축 1</div><div class="card-title">기획자 본위</div><div class="card-body">20년 OTA 경험으로 "실제 필요한" 기능만. 불필요한 UI 장식 없음.</div></div>
+        <div class="card"><div class="card-label">축 2</div><div class="card-title">B2B/B2C 2-트랙</div><div class="card-body">공급가와 판매가 동시 산출. 세계 어떤 서비스도 이 구조는 없음.</div></div>
+        <div class="card"><div class="card-label">축 3</div><div class="card-title">한국 특화</div><div class="card-body">카카오 지도, 원화 기준, 6개 언어 가이드, 한국 관광지 카테고리(Klook 참조).</div></div>
+        <div class="card"><div class="card-label">축 4</div><div class="card-title">오프라인 PWA</div><div class="card-body">공항·호텔·버스 안에서도 동작. 인바운드 업무 현장 100%.</div></div>
+      </div>
+
+      <hr>
+
+      <h3>글로벌 현장 조사 결과 (Global Field Research)</h3>
+      <p style="margin-bottom:16px">전 세계 투어 오퍼레이터·DMC·인바운드 여행사의 <strong>엑셀 고충과 기존 SaaS의 한계</strong>를 조사해, 우리 제품이 공략할 구체적 공백을 정리.</p>
+
+      <h4>엑셀 사용의 실제 데이터</h4>
+      <div class="callout callout-red">
+        <div class="callout-title">★ Orioly 리서치 — 엑셀 시트 오류 비율</div>
+        <strong>"90%의 엑셀 시트에 심각한 오류가 존재한다"</strong> (Orioly, Why Using Excel to Manage a Tour Business is a Bad Idea).<br>
+        사람이 실수하면 작은 오차가 시간이 흐를수록 눈덩이. 투어 기획팀은 견적·맞춤 일정·커미션·달력 작성에 <strong>근무 시간의 불균형적인 비율</strong>을 반복 입력에 소모. 매일 떠올라야 할 매출 활동 대신 "적는" 일에 시간을 보냄.
+      </div>
+
+      <div class="callout callout-red">
+        <div class="callout-title">★ Hacker News / Sriggle / Travefy — 2026 오퍼레이션 현실</div>
+        <strong>"투어 오퍼레이션 팀 평균 업무 시간의 상당 비율이 반복 수기 입력에 소모"</strong> — 견적 수기 작성, 확인 메일 하나씩 발송, 결제 내역 대조, 공급사 확답 추적, 이미 낡은 스프레드시트 갱신. 그 시트가 완성되는 순간 이미 out of date.<br>
+        "부킹 오류는 여러 시스템에 흩어진 데이터 입력 때문. 응답이 느려 경쟁사에 고객을 빼앗기고, 한 팀원 부재가 전체 워크플로우를 멈춤. 고객 선호도를 추적하지 않아 업셀 기회 상실."
+      </div>
+
+      <h4>경쟁 SaaS의 한계 (시장 공백)</h4>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>플랫폼</th><th>가격</th><th>핵심 한계 (조사 결과)</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Checkfront</strong></td><td>월 $99 + 예약 3%</td><td>2023년 Rezdy 합병 후 <strong>가격 인상</strong>. 2025년 현재 가장 비싼 솔루션 중 하나. Viator·GetYourGuide 연동 수동 설정 필요. 소규모 사업자는 대안 찾는 중.</td></tr>
+            <tr><td><strong>Rezdy</strong></td><td>월 $99 + 예약 수수료</td><td><strong>다이나믹 가격 없음</strong>(업계 표준 미달). 리소스 관리 모듈 취약. 리포팅 모듈 번거로움. 장기 사용자가 <strong>다통화 지원 개선 요청</strong> 지속.</td></tr>
+            <tr><td><strong>Bókun</strong></td><td>예약 1~1.5%</td><td>저렴한 편이나 여전히 거래 수수료 존재. 한국어·카카오 연동 없음. 한국 인바운드 특수성(언어별 가이드·VAT) 미대응.</td></tr>
+            <tr><td><strong>Tourplan · Moonstride</strong></td><td>엔터프라이즈 견적</td><td>대형 DMC 타깃. 초기 도입비 수백만원. 영세 인바운드 여행사에 과스펙.</td></tr>
+            <tr><td><strong>한국 "큐잉"</strong></td><td>미공개</td><td>한국 여행신문 보도. 엑셀 드래그·붙여넣기 1분 견적. <strong>가장 직접 경쟁자</strong>. 단 코스 기획·2-트랙 단가·PWA·무료 조합은 없음.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-gold">
+        <div class="callout-title">★ 우리가 파고들 공백 — 3-way Gap</div>
+        ① <strong>가격 공백</strong>: 영세 여행사는 월 $99+예약 수수료 못 냄. 우리는 <strong>평생 무료</strong>.<br>
+        ② <strong>기능 공백</strong>: 어떤 SaaS도 <strong>B2B 공급가+B2C 판매가 2-트랙</strong> + <strong>BEP 실시간</strong> + <strong>한국 카카오 연동</strong>을 동시에 제공하지 않음.<br>
+        ③ <strong>언어·문화 공백</strong>: 한국어·원화·VAT·6개 언어 가이드·카카오 지도·클룩 카테고리 — 해외 SaaS는 모두 미대응.
+      </div>
+
+      <h4>DMC·인바운드 공급망 특수성 (Arival·DMC Quote 자료)</h4>
+      <ul>
+        <li><strong>Net Rate(공급가) vs Rack Rate(소매)</strong>: 공급가는 공개가보다 15~40% 낮은 B2B 전용 가격. 호텔 예: $150 rack → $100 net.</li>
+        <li><strong>4단계 마진 분배</strong>: Hotel → DMC(7~10%) → Outbound 도매(20~25%) → Retail 에이전시(7~10%). 우리 앱의 <strong>netMarginRate · retailMarginRate · 채널 마진</strong>이 정확히 이 체인을 모델링.</li>
+        <li><strong>한국 시장</strong>: 한국 인바운드 커미션 9~20% 범위. 정부 2026 정책 <strong>"가격 투명성 강화"</strong> 추진 — 우리 도구가 여기에 부합.</li>
+        <li><strong>V자 회복</strong>: 한국 2026 인바운드 2,000만 목표. 패키지 수요 폭증 예정.</li>
+      </ul>
+
+      <h4>2026 Must-Have 기능 (Capterra·Software Advice·GetApp 공통 요구)</h4>
+      <ul>
+        <li>여행자 수·여행 일수·<strong>시즌별 요금</strong> 설정</li>
+        <li>성인·소아·유아·경로 <strong>연령대별 가격</strong></li>
+        <li>쿠폰·프로모션·<strong>블랙아웃 날짜</strong>·체류 제한 관리</li>
+        <li>지불 정책·약관·<strong>취소 시나리오</strong></li>
+        <li>AI 기반 콘텐츠·<strong>이미지 자동 생성</strong></li>
+        <li>브랜디드 모바일 앱 배포 (PWA로 해결)</li>
+        <li>실시간 여행자 커뮤니케이션</li>
+        <li>문서 자동화 (PDF·이메일 템플릿)</li>
+        <li>셀프서비스 포털</li>
+        <li><strong>드래그앤드롭 일정 빌더</strong> (Travefy·mTrip·Moonstride·TravelTree·TripCreator·Tourwriter·Wetu 공통)</li>
+      </ul>
+
+      <h4>우리 제품의 매핑 표 (문제 → 해결)</h4>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>글로벌 현장 문제</th><th>우리 해결책</th></tr></thead>
+          <tbody>
+            <tr><td>엑셀 수식 90% 오류</td><td><strong>유닛 테스트된 pricing.ts 순수 함수</strong> — 오차 0</td></tr>
+            <tr><td>인원 변동 시 수식 재작성</td><td>인원 슬라이더 1~1000 실시간 재계산</td></tr>
+            <tr><td>BEP 수기 계산 어려움</td><td><strong>시장가 입력 → BEP 인원 즉답</strong> + 안전 마진 %</td></tr>
+            <tr><td>B2B/B2C 가격 분리 계산</td><td>2-트랙 공급가/판매가 + 채널 마진 자동</td></tr>
+            <tr><td>월 $99 + 거래 수수료 부담</td><td><strong>평생 무료</strong> (광고만 Phase 2부터)</td></tr>
+            <tr><td>모바일 엑셀 UX 최악</td><td>PWA 모바일 네이티브 경험</td></tr>
+            <tr><td>시즌·연령별 요금 수작업</td><td>AgeTierPricing + SeasonPricing 데이터 모델 내장</td></tr>
+            <tr><td>여러 .xlsx 파일 버전 혼돈</td><td>Supabase 단일 원본 + localStorage 자동 저장</td></tr>
+            <tr><td>신규 직원 인수인계 불가</td><td>공유 URL·템플릿·표준 UI로 즉시 이해</td></tr>
+            <tr><td>공급사·가이드·식당 수기 관리</td><td>Vendor 데이터 모델 + 연락처·메모 중앙화</td></tr>
+            <tr><td>취소·환불 시나리오 임기응변</td><td>7일·3일·당일 손실 자동 시뮬 (Phase 2)</td></tr>
+            <tr><td>고객에게 설명용 지도 없음</td><td>카카오 지도 전체 여정 미리보기 자동</td></tr>
+            <tr><td>GDPR·개인정보 보호 취약</td><td>Supabase RLS + 암호화 + 최소 수집 원칙</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p style="font-size:12px;color:var(--ink-500);margin-top:16px;font-style:italic">
+        Sources: Orioly (Why Using Excel is a Bad Idea), Sriggle 2026 Tour Operator Guide, Checkfront Cost Sheet, Symson (8 Excel Pricing Challenges), Bókun Pricing Guides, Arival (Net Rates), DMC Quote B2B Pricing Guide, Yanolja Research 2026 Korea Tourism, Travel And Tour World, Capterra / Software Advice / GetApp 2026 Reviews, 여행신문 (큐잉 보도).
+      </p>
+    </section>
+
+    <!-- ========== 04 타깃 & 페르소나 ========== -->
+    <section id="s04">
+      <div class="sec-head">
+        <span class="sec-num">04</span>
+        <div>
+          <span class="sec-kicker">Target &amp; Personas</span>
+          <div class="sec-title">타깃 사용자 &amp; 페르소나</div>
+        </div>
+      </div>
+
+      <h3>사용자 계층 (Phase별) — 100% Organic Search 중심</h3>
+      <p style="margin-bottom:12px;color:var(--ink-600)">오프라인 영업·관광협회·단톡방 홍보 <strong>일체 배제</strong>. 구글·네이버 검색에서 자연스럽게 도달하는 유입만으로 성장. 서비스 자체의 기능 가치와 SEO 최적화된 공개 콘텐츠가 유일한 마케팅 채널.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Phase</th><th>주 사용자</th><th>규모</th><th>자연 유입 경로 (Organic)</th></tr></thead>
+          <tbody>
+            <tr class="phase-row"><td>Phase 0</td><td>워터트리 상품기획팀</td><td>3~5명</td><td>내부 배포 (마케팅 무관)</td></tr>
+            <tr><td>Phase 1</td><td>한국 인바운드 여행사 기획자 · 사장</td><td>~2,000사</td><td>구글·네이버 검색 "패키지 단가 계산", "투어 견적 툴" 롱테일 키워드</td></tr>
+            <tr><td>Phase 1</td><td>오프라인 여행사 직원</td><td>~수천 명</td><td>"여행사 엑셀 단가", "투어 원가 계산법" 검색 → 랜딩</td></tr>
+            <tr><td>Phase 2</td><td>프리랜서 가이드·TC</td><td>~30,000명</td><td>공개 샘플 패키지 페이지 SEO 노출 (예: "서울 3박4일 1인 견적")</td></tr>
+            <tr><td>Phase 2</td><td>해외 OTA B2B 바이어</td><td>~수백 곳</td><td>공유 URL 바이럴 (사용자가 카톡으로 보낸 링크 → 신규 유입)</td></tr>
+            <tr><td>Phase 3</td><td>관광공사·지자체·대형 OTA</td><td>~50 기관</td><td>축적된 데이터·리포트 콘텐츠 SEO → 검색 도달 후 문의</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>획득 전략: Organic Search First</h3>
+      <div class="callout callout-gold">
+        <div class="callout-title">★ 현 단계 포커스 — 오프라인 영업 일체 없음</div>
+        대표님 방침: <strong>"인터넷 검색해서 자연스럽게 접하게 한다. 오프라인 영업까지 진행하지 않는다."</strong><br>
+        기존 파인드루트·워터트리 B2B 네트워크 동원 없이, <strong>서비스 자체의 검색 노출</strong>로만 성장. 광고비 0원 원칙 유지.
+      </div>
+
+      <div class="cards">
+        <div class="card card-blue">
+          <div class="card-label">SEO 축 1</div>
+          <div class="card-title">공개 샘플 패키지 인덱싱</div>
+          <div class="card-body">사용자가 '공개'로 만든 패키지 각각을 <code>/u/nickname/slug</code>로 노출. "서울 3박4일 1인 견적", "DMZ 투어 단가" 롱테일 키워드 자동 확보. 사용자 수 증가 = SEO 페이지 수 증가의 양의 루프.</div>
+        </div>
+        <div class="card card-blue">
+          <div class="card-label">SEO 축 2</div>
+          <div class="card-title">카테고리·지역 허브 페이지</div>
+          <div class="card-body">Phase 2부터 <code>/ko/course/seoul</code>, <code>/ko/course/busan</code>, <code>/ko/category/culture</code> 등 허브 페이지 자동 생성. 공개 패키지들을 지역·카테고리로 집계해 SEO 자산화.</div>
+        </div>
+        <div class="card card-blue">
+          <div class="card-label">SEO 축 3</div>
+          <div class="card-title">도구 랜딩 (Tool SEO)</div>
+          <div class="card-body">"투어 견적 계산기", "패키지 원가 계산", "인바운드 마진 계산" 등 도구성 키워드로 랜딩 페이지 제작. 계산기 자체가 검색 진입점이 됨.</div>
+        </div>
+        <div class="card card-blue">
+          <div class="card-label">SEO 축 4</div>
+          <div class="card-title">기술 SEO 인프라</div>
+          <div class="card-body">Next.js SSG + sitemap.xml 자동 생성 · hreflang 다국어 · OpenGraph · Twitter Card · JSON-LD 구조화 데이터(TravelAction·Product). 모든 공개 페이지 Lighthouse SEO ≥ 95.</div>
+        </div>
+        <div class="card card-blue">
+          <div class="card-label">SEO 축 5</div>
+          <div class="card-title">바이럴 공유 URL</div>
+          <div class="card-body">사용자가 카톡·이메일로 보내는 공유 URL이 곧 신규 유입 트래픽. 각 공유가 새로운 방문자를 끌고 옴. 별도 홍보 없이 유저가 유저를 데려오는 자생 구조.</div>
+        </div>
+        <div class="card card-blue">
+          <div class="card-label">SEO 축 6</div>
+          <div class="card-title">다국어 검색 커버</div>
+          <div class="card-body">한국어는 네이버·구글, 영어·일본어·중국어는 구글 검색 노출. <code>hreflang</code> 태그로 언어별 SEO 자산 분리. 인바운드 특성상 해외에서의 검색 유입도 가치 높음.</div>
+        </div>
+      </div>
+
+      <h3>타깃 키워드 (1차 리서치)</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>카테고리</th><th>키워드 예시</th><th>의도</th><th>우선순위</th></tr></thead>
+          <tbody>
+            <tr><td>도구 검색</td><td>패키지 단가 계산 · 투어 견적 툴 · 인바운드 마진 계산</td><td>즉시 사용 의도</td><td>★★★★★</td></tr>
+            <tr><td>노하우 검색</td><td>여행사 원가 계산법 · 단가표 엑셀 · 패키지 마진율</td><td>학습 의도 → 도구 전환</td><td>★★★★</td></tr>
+            <tr><td>공개 샘플</td><td>서울 3박4일 1인 견적 · DMZ 투어 단가 · 부산 1일 투어 원가</td><td>참고·복제 의도</td><td>★★★★</td></tr>
+            <tr><td>공급가 검색 (B2B)</td><td>한국 인바운드 도매가 · 서울 시티투어 공급가</td><td>B2B 바이어</td><td>★★★</td></tr>
+            <tr><td>해외어</td><td>Korea tour pricing · 韓国 パッケージ 原価 · 韩国包团报价</td><td>해외 OTA 바이어</td><td>★★★</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>페르소나</h3>
+
+      <div class="persona">
+        <div class="persona-avatar">박</div>
+        <div>
+          <div class="persona-name">박지민 · 38세</div>
+          <div class="persona-meta">워터트리 상품기획팀 · 경력 9년 · Phase 0 주 사용자</div>
+          <div class="persona-need">
+            <b>상황</b>: 매일 5~10건의 견적 요청을 받아 엑셀로 처리. 인원·옵션 변동마다 재계산.<br>
+            <b>기대</b>: 10분→2분 단축. 실수 없는 자동 마진 계산. PDF 바로 보내기.<br>
+            <b>성공 지표</b>: 견적 처리 시간 70% 단축, 실수 0건.
+          </div>
+        </div>
+      </div>
+
+      <div class="persona">
+        <div class="persona-avatar">Li</div>
+        <div>
+          <div class="persona-name">Li Wei · 45세</div>
+          <div class="persona-meta">상하이 여행사 B2B 바이어 · Phase 1+ 부차 사용자</div>
+          <div class="persona-need">
+            <b>상황</b>: 중국 출국자 대상 한국 패키지 소싱. 공급가를 30분 내 확인해야 경쟁에서 이김.<br>
+            <b>기대</b>: 카톡으로 받은 URL 열면 즉시 인원별 공급가 확인. 자국어(중국어) 지원.<br>
+            <b>성공 지표</b>: 협상 턴 5번 → 1번.
+          </div>
+        </div>
+      </div>
+
+      <div class="persona">
+        <div class="persona-avatar">김</div>
+        <div>
+          <div class="persona-name">김태연 · 52세</div>
+          <div class="persona-meta">인바운드 여행사 사장 · 직원 4명 · Phase 1~2 핵심 유료 전환 타깃</div>
+          <div class="persona-need">
+            <b>상황</b>: 엑셀·손 계산으로 연간 수백 건 견적. 직원 퇴사 시 단가 노하우 유실.<br>
+            <b>기대</b>: 회사 단가 표준화, 팀 공유, 견적 이력 자동 저장, 브랜드 PDF 출력.<br>
+            <b>결제 지점</b>: 팀 공유(5인) + 무제한 저장 + 워터마크 제거 → 월 29,000원 구독.
+          </div>
+        </div>
+      </div>
+
+      <div class="persona">
+        <div class="persona-avatar">한</div>
+        <div>
+          <div class="persona-name">한지수 · 34세</div>
+          <div class="persona-meta">프리랜서 관광통역안내사 (일본어) · Phase 2 무료 사용자</div>
+          <div class="persona-need">
+            <b>상황</b>: 개별 의뢰로 직접 견적서 만들어 제공. 디자인 자신 없음.<br>
+            <b>기대</b>: 예쁜 PDF 견적서, 공유 URL로 고객 응대.<br>
+            <b>수익 기여</b>: AdSense 노출, 장기적으로 프리미엄 전환 가능성.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 05 핵심 가치 제안 ========== -->
+    <section id="s05">
+      <div class="sec-head">
+        <span class="sec-num">05</span>
+        <div>
+          <span class="sec-kicker">Value Proposition</span>
+          <div class="sec-title">핵심 가치 제안</div>
+        </div>
+      </div>
+
+      <div class="highlight-quote">
+        "차량·가이드(공통비) + 관광지 체험비(1인당) + 인원수(1~1000명) → <span class="accent">1인 원가 · 공급가(B2B) · 판매가(B2C) · 수익률 · 마진 합계</span>가 실시간으로 보이는 대시보드"
+      </div>
+
+      <h3>Before &amp; After</h3>
+      <div class="metric-split">
+        <div class="metric-box">
+          <h5 style="color:var(--red-600)">Before (엑셀 현장)</h5>
+          <ul>
+            <li>엑셀 파일 열기 → 10분</li>
+            <li><strong>IF·VLOOKUP 수식 뒤엉킨 시트</strong> 찾아 열기</li>
+            <li>인원·옵션 조합 수식 재작성·재계산 → 20분</li>
+            <li>수식 하나 실수로 전체 망가짐 → 복구 10분</li>
+            <li>견적서 디자인·PDF 변환 → 15분</li>
+            <li>이메일·카톡으로 전송 → 5분</li>
+            <li>상대방 "10명이면 얼마?" 되물음 → 15분 추가</li>
+            <li>총 소요: <strong>약 65~75분</strong></li>
+            <li>실수 빈도: 주 1~2건 (1인당 수만원 오차)</li>
+            <li><em style="color:var(--red-600)">신규 직원 인수인계 불가능 — 시트 창작자만 이해</em></li>
+          </ul>
+        </div>
+        <div class="metric-box">
+          <h5 style="color:var(--green-700)">After (이 앱)</h5>
+          <ul>
+            <li>PWA 앱 열기 → 2초</li>
+            <li>차량·가이드·관광지 선택 → 3분</li>
+            <li>인원·마진 슬라이더로 실시간 확인 → 1분</li>
+            <li>PDF/URL/QR 자동 생성 → 10초</li>
+            <li>공유 URL로 즉시 응답, 인원 조정은 상대가 슬라이더로 직접 확인 → 0분</li>
+            <li>총 소요: <strong>약 5분</strong></li>
+            <li>실수 빈도: 0건 (유닛 테스트된 순수 함수)</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>3가지 핵심 가치</h3>
+      <div class="cards">
+        <div class="card"><div class="card-label">Value 1</div><div class="card-title">시간 절감 92%</div><div class="card-body">65분 → 5분. 매일 5건 견적 → 주 25시간 절감 → 연 1,200시간 → 1명 FTE 환수.</div></div>
+        <div class="card card-gold"><div class="card-label">Value 2</div><div class="card-title">실수 Zero</div><div class="card-body">유닛 테스트된 계산 공식. 수식 수동 작성 제거. 1인당 수만원 오차 근절.</div></div>
+        <div class="card card-blue"><div class="card-label">Value 3</div><div class="card-title">협상 우위</div><div class="card-body">B2B 바이어에게 "URL 열어보세요, 인원 바꿔가며 보세요" — 협상 턴 5회 → 1회.</div></div>
+      </div>
+    </section>
+
+    <!-- ========== 06 4단계 로드맵 ========== -->
+    <section id="s06">
+      <div class="sec-head">
+        <span class="sec-num">06</span>
+        <div>
+          <span class="sec-kicker">Roadmap</span>
+          <div class="sec-title">4단계 로드맵</div>
+        </div>
+      </div>
+
+      <div class="timeline">
+        <div class="timeline-item milestone">
+          <span class="timeline-label">Phase 0 · 2~3주</span>
+          <div class="timeline-title">내부 MVP · 워터트리 단가 계산기</div>
+          <div class="timeline-body">
+            <strong>목표</strong>: 80% 원칙에 맞춰 2~3주 내 출시. 내부 기획팀 3명이 1주일 연속 실사용으로 검증.<br>
+            <strong>범위</strong>: PWA 기본 · 대시보드 · 빌더 · 카카오 지도 · 체험/머무름 시간 · PDF 3종 · XLSX · 공유 URL · QR. JSON 내장 카탈로그. localStorage 저장.<br>
+            <strong>제외</strong>: 로그인·DB·CMS·광고·구독·공개 피드.<br>
+            <strong>완료 조건</strong>: 박지민(페르소나 A) 견적 처리 10분 → 2분 달성.
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <span class="timeline-label">Phase 1 · +3~4주</span>
+          <div class="timeline-title">SaaS 전환 · 순수 무료 공개 베타</div>
+          <div class="timeline-body">
+            <strong>목표</strong>: 인바운드 여행사 100개 초대 베타. 광고·결제 일체 없이 <strong>순수 기능 가치로 성장</strong>. 피드백 수집.<br>
+            <strong>추가</strong>: Supabase Auth(이메일+비번+구글 OAuth) · 패키지 클라우드 저장 · `/u/nickname/slug` 공유 · 관리자 CMS(차량·가이드·사용자 관리) · ko/en/ja 3언어 UI.<br>
+            <strong>제외</strong>: 광고·결제·프리미엄 — 수익화 요소 일체 없음.<br>
+            <strong>완료 조건</strong>: 가입자 100명, 생성 패키지 500건, DAU 20명.
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <span class="timeline-label">Phase 2 · +4~6주</span>
+          <div class="timeline-title">수익화 시작 · 광고 1차 배치</div>
+          <div class="timeline-body">
+            <strong>목표</strong>: Google AdSense 1차 승인 후 배치. 워터트리 상품 광고로 월 30만원 이상 창출.<br>
+            <strong>추가</strong>: Google AdSense · 워터트리 상품 광고 슬롯 · 선택 공개 피드 · SEO 허브(`/ko/course/...`) · 19언어 UI 확장.<br>
+            <strong>유보</strong>: 프리미엄 구독·토스페이먼츠는 MAU 5,000 도달 후 도입 결정.<br>
+            <strong>완료 조건</strong>: 가입자 1,000명, 월 광고 수익 30만원 이상.
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <span class="timeline-label">Phase 3 · +6~8주</span>
+          <div class="timeline-title">데이터 비즈니스 · B2B 수익</div>
+          <div class="timeline-body">
+            <strong>목표</strong>: 연간 데이터 리포트 계약 5건.<br>
+            <strong>추가</strong>: 집계 리포트 자동 생성 파이프라인 · 관광공사·대형 OTA·지자체 영업 · 분석 DB 분리.<br>
+            <strong>완료 조건</strong>: 리포트 계약 1건 연 3,000만원, 연 누적 1억.
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout-gold">
+        <div class="callout-title">★ Phase 전환 기준 (Go/No-Go)</div>
+        각 Phase 종료 시 <strong>수치 기반 체크포인트</strong>로 다음 Phase 진입 여부 결정. 무리하게 진행하지 않음.<br>
+        Phase 0 → 1: 내부 기획자 만족도 8/10 이상, 주간 사용 빈도 3회 이상.<br>
+        Phase 1 → 2: 가입자 100명, 생성 패키지 500건, 오류 리포트 5건 이하.<br>
+        Phase 2 → 3: MRR 500,000원, 유료 전환율 1.5% 이상, 이탈률 10% 이하.
+      </div>
+    </section>
+
+    <!-- ========== 07 데이터 모델 ========== -->
+    <section id="s07">
+      <div class="sec-head">
+        <span class="sec-num">07</span>
+        <div>
+          <span class="sec-kicker">Data Model</span>
+          <div class="sec-title">데이터 모델</div>
+        </div>
+      </div>
+
+      <h3>공통 비용 (파티 전체 1회 부과)</h3>
+      <pre><code><span class="tok-com">// 차량 5종 — 45/40/35/25인승 + 승합차</span>
+<span class="tok-key">type</span> <span class="tok-typ">Vehicle</span> = {
+  id:          <span class="tok-typ">string</span>;
+  name:        <span class="tok-typ">string</span>;          <span class="tok-com">// "45인승 대형버스"</span>
+  capacity:    <span class="tok-typ">number</span>;          <span class="tok-com">// 45</span>
+  dailyRate:   <span class="tok-typ">number</span>;          <span class="tok-com">// 일 600,000원</span>
+  fuelSurcharge?: <span class="tok-typ">number</span>;       <span class="tok-com">// 유류 할증</span>
+};
+
+<span class="tok-com">// 가이드 6언어 — 영/일/중/대만/러/몽</span>
+<span class="tok-key">type</span> <span class="tok-typ">Guide</span> = {
+  id:        <span class="tok-typ">string</span>;
+  language:  <span class="tok-str">'en'</span> | <span class="tok-str">'ja'</span> | <span class="tok-str">'zh-CN'</span> | <span class="tok-str">'zh-TW'</span> | <span class="tok-str">'ru'</span> | <span class="tok-str">'mn'</span>;
+  label:     <span class="tok-typ">string</span>;            <span class="tok-com">// "영어 가이드"</span>
+  dailyRate: <span class="tok-typ">number</span>;            <span class="tok-com">// 일 200,000원</span>
+  nightSurcharge?: <span class="tok-typ">number</span>;       <span class="tok-com">// 야간 할증</span>
+};</code></pre>
+
+      <h3>위치 (Kakao Map API)</h3>
+      <pre><code><span class="tok-key">type</span> <span class="tok-typ">Location</span> = {
+  placeName:     <span class="tok-typ">string</span>;        <span class="tok-com">// "경복궁" — 카카오 검색 결과</span>
+  address:       <span class="tok-typ">string</span>;        <span class="tok-com">// 지번 주소</span>
+  roadAddress?:  <span class="tok-typ">string</span>;        <span class="tok-com">// 도로명 주소</span>
+  lat:           <span class="tok-typ">number</span>;
+  lng:           <span class="tok-typ">number</span>;
+  kakaoPlaceId?: <span class="tok-typ">string</span>;        <span class="tok-com">// 재검색/딥링크용</span>
+};</code></pre>
+
+      <h3>개별 항목 (1인당 금액) — 검색·선택 중심 + 메모</h3>
+      <div class="callout callout-blue">
+        <div class="callout-title">★ 입력 방식 원칙 — 자유 타이핑 최소화</div>
+        모든 입력은 <strong>① 자체 카탈로그 검색 · ② 카테고리 아이콘 선택 · ③ 카카오 지도 검색</strong>이 우선. 자유 텍스트는 <strong>메모(notes) 필드에만</strong>. 기획자가 수기로 쓰는 시간을 최소화.
+      </div>
+
+      <div class="callout callout-gold">
+        <div class="callout-title">★ 장소 사진 자동 수집 원칙 — 저작권 준수</div>
+        <strong>"판매 목적 아님"이 저작권 면책은 아님.</strong> 합법 경로만 사용:<br>
+        ① <strong>카카오 로컬 API 장소 사진</strong> — 카카오 서비스 약관 허용 범위.<br>
+        ② <strong>Unsplash / Pexels API</strong> — CC0 라이선스, 상업 이용 가능, 장소명 자동 검색.<br>
+        ③ <strong>Wikimedia Commons</strong> — 공공재·CC-BY 사진, 저명 관광지 커버리지 높음.<br>
+        ④ <strong>사용자 업로드</strong> — Supabase Storage (무료 1GB 내), 본인 저작권 이미지.<br>
+        <strong>크롤링·스크랩 금지</strong>. 출처(credit) 자동 표기. CC-BY는 원저자 표기 필수.
+      </div>
+      <pre><code><span class="tok-com">// 자체 카탈로그 — 자주 쓰는 관광지·식사·체험이 미리 등록되어 검색으로 즉시 선택</span>
+<span class="tok-key">type</span> <span class="tok-typ">CatalogActivity</span> = {
+  id:                  <span class="tok-typ">string</span>;
+  name:                <span class="tok-typ">string</span>;      <span class="tok-com">// "경복궁", "난타 공연" 등</span>
+  aliases:             <span class="tok-typ">string</span>[];    <span class="tok-com">// ["Gyeongbokgung", "景福宮"] 검색어 확장</span>
+  category:            <span class="tok-typ">ActivityCategory</span>;
+  defaultPrice:        <span class="tok-typ">number</span>;
+  defaultActivityMin:  <span class="tok-typ">number</span>;
+  defaultStayMin:      <span class="tok-typ">number</span>;
+  location:            <span class="tok-typ">Location</span>;
+  popularity:          <span class="tok-typ">number</span>;      <span class="tok-com">// 선택 빈도 — 검색 결과 정렬</span>
+};
+
+<span class="tok-com">// 기획 시점 인스턴스 — 카탈로그에서 복제 + 프로젝트별 조정</span>
+<span class="tok-key">type</span> <span class="tok-typ">Activity</span> = {
+  id:                  <span class="tok-typ">string</span>;
+  catalogId?:          <span class="tok-typ">string</span>;      <span class="tok-com">// 카탈로그 원본 참조 (없으면 신규)</span>
+  name:                <span class="tok-typ">string</span>;      <span class="tok-com">// 카탈로그에서 복제 or 신규 입력</span>
+  category:            <span class="tok-typ">ActivityCategory</span>;
+  pricePerPerson:      <span class="tok-typ">number</span>;      <span class="tok-com">// 1인 25,000원 (카탈로그 기본값 오버라이드 가능)</span>
+  location:            <span class="tok-typ">Location</span>;
+  activityDurationMin: <span class="tok-typ">number</span>;      <span class="tok-com">// 실제 체험·관람·식사 시간</span>
+  stayDurationMin:     <span class="tok-typ">number</span>;      <span class="tok-com">// 체류 시간 (체험+자유, ≥ activity)</span>
+  notes?:              <span class="tok-typ">string</span>;      <span class="tok-com">// ★ 비고·메모 — "VIP 의전 주의", "연장 가능" 등 자유 메모</span>
+  photos?:             <span class="tok-typ">Photo</span>[];       <span class="tok-com">// ★ 장소 사진 (자동 수집 + 업로드)</span>
+};
+
+<span class="tok-com">// 사진 — 저작권 안전한 경로만 사용</span>
+<span class="tok-key">type</span> <span class="tok-typ">Photo</span> = {
+  url:        <span class="tok-typ">string</span>;               <span class="tok-com">// 이미지 URL (원본 서버 or Supabase Storage)</span>
+  source:     <span class="tok-str">'kakao'</span> | <span class="tok-str">'unsplash'</span> | <span class="tok-str">'pexels'</span> | <span class="tok-str">'wikimedia'</span> | <span class="tok-str">'user-upload'</span>;
+  license:    <span class="tok-typ">string</span>;               <span class="tok-com">// "CC0", "CC-BY-2.0", "Kakao TOS", "User Owned"</span>
+  credit?:    <span class="tok-typ">string</span>;               <span class="tok-com">// 촬영자·원본 페이지 — CC-BY 필수 표기</span>
+  width:      <span class="tok-typ">number</span>;
+  height:     <span class="tok-typ">number</span>;
+  thumbnailUrl?: <span class="tok-typ">string</span>;
+};
+
+<span class="tok-key">type</span> <span class="tok-typ">ActivityCategory</span> =
+  | <span class="tok-str">'tours'</span>       <span class="tok-com">// 투어·관광 — 시티투어, DMZ, 도보</span>
+  | <span class="tok-str">'attractions'</span> <span class="tok-com">// 테마파크 — 에버랜드, 롯데월드, N서울타워</span>
+  | <span class="tok-str">'activities'</span>  <span class="tok-com">// 어드벤처 — 스키, 서핑, 패러글라이딩, ATV</span>
+  | <span class="tok-str">'culture'</span>     <span class="tok-com">// 문화·체험 — 한복, 쿠킹 클래스, 템플스테이</span>
+  | <span class="tok-str">'shows'</span>       <span class="tok-com">// 공연·쇼 — 난타, 점프, K-POP 콘서트</span>
+  | <span class="tok-str">'food'</span>        <span class="tok-com">// 음식 — 한식, BBQ, 해산물, 푸드 투어</span>
+  | <span class="tok-str">'wellness'</span>    <span class="tok-com">// 웰빙·스파 — 찜질방, 마사지, 뷰티</span>
+  | <span class="tok-str">'transport'</span>   <span class="tok-com">// 교통·패스 — 공항 픽업, 디스커버 서울 패스</span>
+  | <span class="tok-str">'rentals'</span>     <span class="tok-com">// 렌탈 — 와이파이, 유심, 한복 대여</span>
+  | <span class="tok-str">'shopping'</span>;   <span class="tok-com">// 쇼핑 — 면세점 투어, 아울렛 셔틀</span></code></pre>
+
+      <h3>패키지 (기획 단위)</h3>
+      <pre><code><span class="tok-key">type</span> <span class="tok-typ">Package</span> = {
+  id:        <span class="tok-typ">string</span>;
+  ownerId?:  <span class="tok-typ">string</span>;                       <span class="tok-com">// Phase 1+ Supabase user.id</span>
+  title:     <span class="tok-typ">string</span>;
+  slug?:     <span class="tok-typ">string</span>;                       <span class="tok-com">// Phase 1+ 공유 URL slug</span>
+  visibility: <span class="tok-str">'private'</span> | <span class="tok-str">'unlisted'</span> | <span class="tok-str">'public'</span>;
+  days:      <span class="tok-typ">Day</span>[];
+  partySize: <span class="tok-typ">number</span>;                       <span class="tok-com">// 1~1000 자유 입력</span>
+  compareSizes?: <span class="tok-typ">number</span>[];                  <span class="tok-com">// 예 [1,10,50,100,500,1000]</span>
+  currency:  <span class="tok-str">'KRW'</span>;
+  exchangeRates: { USD: <span class="tok-typ">number</span>; JPY: <span class="tok-typ">number</span>; CNY: <span class="tok-typ">number</span> };
+
+  <span class="tok-com">// 2-트랙 마진 ★</span>
+  netMarginRate:    <span class="tok-typ">number</span>;               <span class="tok-com">// B2B 공급가 마진 (기본 0.12)</span>
+  retailMarginRate: <span class="tok-typ">number</span>;               <span class="tok-com">// B2C 판매가 마진 (기본 0.35)</span>
+  vatRate:          <span class="tok-typ">number</span>;               <span class="tok-com">// 0.10</span>
+
+  <span class="tok-com">// 손익분기점 계산용 (선택)</span>
+  targetMarketPrice?: <span class="tok-typ">number</span>;             <span class="tok-com">// 시장가 1인 판매가 (예: 150,000원) — BEP 계산 기준</span>
+
+  notes?: <span class="tok-typ">string</span>;                          <span class="tok-com">// ★ 패키지 전체 비고·메모</span>
+};
+
+<span class="tok-key">type</span> <span class="tok-typ">Day</span> = {
+  label:         <span class="tok-typ">string</span>;                <span class="tok-com">// "Day 1 — 서울 시내"</span>
+  date?:         <span class="tok-typ">string</span>;                <span class="tok-com">// ★ "2026-05-15" — 실제 달력 날짜 (시즌 가격 연동)</span>
+  startTime:     <span class="tok-typ">string</span>;                <span class="tok-com">// "08:30"</span>
+  vehicleId:     <span class="tok-typ">string</span>;
+  guideId:       <span class="tok-typ">string</span>;
+  startLocation: <span class="tok-typ">Location</span>;              <span class="tok-com">// 호텔·공항·미팅포인트</span>
+  endLocation:   <span class="tok-typ">Location</span>;              <span class="tok-com">// 저녁 숙소·공항</span>
+  activities:    <span class="tok-typ">string</span>[];              <span class="tok-com">// Activity id 방문 순서</span>
+  legs?:         <span class="tok-typ">DayLeg</span>[];              <span class="tok-com">// 자동 계산 (카카오 Mobility)</span>
+  notes?:        <span class="tok-typ">string</span>;                <span class="tok-com">// ★ Day별 비고·메모 — "우천 시 대체 코스" 등</span>
+
+  <span class="tok-com">// ★ Day별 인원 변동 (실무: 중간 이탈·합류·자유시간 등으로 일마다 다름)</span>
+  partySize?:    <span class="tok-typ">number</span>;                <span class="tok-com">// 이 Day의 실제 참가 인원 (없으면 Package.partySize)</span>
+  partyComposition?: {                        <span class="tok-com">// 세부 구성 (옵션, 연령대별 요금과 연동)</span>
+    adult:   <span class="tok-typ">number</span>;
+    child?:  <span class="tok-typ">number</span>;
+    infant?: <span class="tok-typ">number</span>;
+    senior?: <span class="tok-typ">number</span>;
+  };
+};
+
+<span class="tok-key">type</span> <span class="tok-typ">DayLeg</span> = {
+  fromLocation: <span class="tok-typ">Location</span>;
+  toLocation:   <span class="tok-typ">Location</span>;
+  distanceKm:   <span class="tok-typ">number</span>;                 <span class="tok-com">// 카카오 API 반환</span>
+  drivingMin:   <span class="tok-typ">number</span>;                 <span class="tok-com">// 교통 고려 주행 시간</span>
+  fetchedAt:    <span class="tok-typ">string</span>;                 <span class="tok-com">// 캐시 갱신용 ISO</span>
+};</code></pre>
+
+      <h3>Day 자동 집계</h3>
+      <div class="formula">
+<span class="lbl">자동 계산 (화면 상단 표시)</span>
+<span class="op">총 이동 거리</span>   = Σ legs.distanceKm
+<span class="op">총 이동 시간</span>   = Σ legs.drivingMin
+<span class="op">총 체험 시간</span>   = Σ activities.activityDurationMin
+<span class="op">총 체류 시간</span>   = Σ activities.stayDurationMin
+<span class="op">Day 소요 시간</span>  = 총 이동 시간 + 총 체류 시간
+<span class="op">도착 예정 시각</span> = startTime + Day 소요 시간
+<span class="com">// 12시간 초과 시 경고, 이동 구간 60분 초과 시 노란 표시</span>
+      </div>
+    </section>
+
+    <!-- ========== 08 계산 공식 ========== -->
+    <section id="s08">
+      <div class="sec-head">
+        <span class="sec-num">08</span>
+        <div>
+          <span class="sec-kicker">Pricing Formula</span>
+          <div class="sec-title">계산 공식 &amp; 예시</div>
+        </div>
+      </div>
+
+      <div class="callout callout-gold">
+        <div class="callout-title">★ 앱의 심장 — 2-트랙 계산</div>
+        이 공식 하나가 앱의 모든 가치를 만든다. 유닛 테스트 100% 커버리지 필수.
+      </div>
+
+      <h3>전체 계산 흐름</h3>
+      <div class="formula">
+<span class="lbl">Day별 단가 (각 Day는 고유 인원수 N_d를 가질 수 있음) ★</span>
+<span class="op">N_d</span>                = Day.partySize ?? Package.partySize    <span class="com">// Day 오버라이드 없으면 기본</span>
+<span class="op">Day_공통비</span>         = vehicle.dailyRate + guide.dailyRate    <span class="com">// 인원 무관 고정</span>
+<span class="op">Day_개별비(1인)</span>    = Σ activities.pricePerPerson            <span class="com">// 그날 활동의 1인 합</span>
+<span class="op">Day_1인_원가</span>       = Day_공통비 / N_d + Day_개별비(1인)
+<span class="op">Day_총_원가</span>        = Day_공통비 + Day_개별비(1인) × N_d
+<span class="op">Day_공급_소계</span>      = Day_총_원가 × (1 + <span class="var">netMarginRate</span>)
+<span class="op">Day_판매_소계</span>      = Day_총_원가 × (1 + <span class="var">retailMarginRate</span>) × (1 + <span class="var">vatRate</span>)
+
+<span class="lbl">패키지 총합 (모든 Day 합산)</span>
+<span class="op">총_공통비</span>     = Σ Day_공통비                    <span class="com">// 모든 Day의 차량+가이드 합</span>
+<span class="op">총_개별비</span>     = Σ (Day_개별비(1인) × N_d)       <span class="com">// Day별 인원 가중</span>
+<span class="op">총_원가</span>       = 총_공통비 + 총_개별비
+<span class="op">총_공급가</span>     = 총_원가 × (1 + <span class="var">netMarginRate</span>)
+<span class="op">총_판매가</span>     = 총_원가 × (1 + <span class="var">retailMarginRate</span>) × (1 + <span class="var">vatRate</span>)
+<span class="op">VAT_합계</span>     = 총_판매가 × <span class="var">vatRate</span> / (1 + <span class="var">vatRate</span>)
+<span class="op">VAT제외_판매</span> = 총_판매가 − VAT_합계
+
+<span class="lbl">연인원 기반 1인 평균가 (참고 지표)</span>
+<span class="op">연인원</span>        = Σ N_d                          <span class="com">// 예: Day1(30) + Day2(20) + Day3(15) = 65 person-days</span>
+<span class="op">1인_평균_원가</span>  = 총_원가 / 연인원                 <span class="com">// 고객 1명이 1일 체험 시 평균</span>
+
+<span class="lbl">단일 인원 모드 (모든 Day 동일 인원 N)</span>
+<span class="op">1인_원가(N)</span>  = 총_개별비(1인) + (총_공통비 / N)  <span class="com">// 기존 공식 유지</span>
+<span class="op">1인_공급가</span>   = 1인_원가 × (1 + <span class="var">netMarginRate</span>)
+<span class="op">1인_판매가</span>   = 1인_원가 × (1 + <span class="var">retailMarginRate</span>) × (1 + <span class="var">vatRate</span>)
+
+<span class="lbl">수익·마진 KPI</span>
+<span class="op">직판_수익</span>    = VAT제외_판매 − 원가_합계        <span class="com">// 워터트리 직판 순이익</span>
+<span class="op">직판_수익률</span>  = 직판_수익 / VAT제외_판매          <span class="com">// %</span>
+<span class="op">직판_마크업율</span> = 직판_수익 / 원가_합계            <span class="com">// %</span>
+<span class="op">B2B_수익</span>     = 공급_합계 − 원가_합계           <span class="com">// 도매 공급 시 순이익</span>
+<span class="op">B2B_수익률</span>   = B2B_수익 / 공급_합계             <span class="com">// %</span>
+<span class="op">채널_마진</span>    = 판매_합계 − 공급_합계            <span class="com">// B2B 파트너 몫</span>
+<span class="op">채널_마진율</span>  = 채널_마진 / 공급_합계             <span class="com">// %</span>
+
+<span class="lbl">★ 손익분기점 (Break-Even Point, BEP)</span>
+<span class="com">// "시장가 P로 팔 때 몇 명 이상부터 수익이 +가 되는가"</span>
+<span class="op">BEP_인원(N*)</span> = 총_공통비 / (<span class="var">P</span> / (1 + <span class="var">vatRate</span>) − 총_개별비(1인))
+
+<span class="com">// 예: 공통비 800,000 + 1인 개별비 40,000 + 시장가 150,000 + VAT 10%</span>
+<span class="com">//    150,000 / 1.10 = 136,363.6 (VAT 제외 수취)</span>
+<span class="com">//    136,363.6 − 40,000 = 96,363.6 (1인당 공통비 회수 여력)</span>
+<span class="com">//    800,000 / 96,363.6 = 8.3 → BEP 9명</span>
+
+<span class="op">BEP_마진0인원</span>  = 가장 작은 N, 직판_수익(N) ≥ 0 조건 만족
+<span class="op">안전_마진</span>     = (현재_인원 − BEP) / BEP         <span class="com">// 현재 인원이 BEP를 얼마나 초과했는지 %</span>
+      </div>
+
+      <div class="callout callout-gold">
+        <div class="callout-title">★ 손익분기점이 왜 중요한가</div>
+        대표님의 실사용 관점: "최소 몇 명을 태워야 수익구조가 +가 되는가"를 즉시 알고 싶음. 예약 확정 인원이 BEP 이하면 <strong>투어 취소 or 가격 재협상</strong>이 합리적 선택. 이 앱이 그 판단을 실시간으로 해준다.
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>시장가 (1인)</th><th>1인 공통비 회수 여력</th><th>BEP 인원</th><th>10명일 때 안전 마진</th></tr></thead>
+          <tbody>
+            <tr><td>100,000원</td><td>50,909원</td><td><strong>16명</strong></td><td>-38% (위험)</td></tr>
+            <tr><td>120,000원</td><td>69,091원</td><td><strong>12명</strong></td><td>-17% (위험)</td></tr>
+            <tr class="phase-row"><td><strong>150,000원</strong></td><td><strong>96,364원</strong></td><td><strong>9명</strong></td><td><strong>+11% (안전)</strong></td></tr>
+            <tr><td>180,000원</td><td>123,636원</td><td><strong>7명</strong></td><td>+43% (매우 안전)</td></tr>
+            <tr><td>200,000원</td><td>141,818원</td><td><strong>6명</strong></td><td>+67%</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:12.5px;color:var(--ink-500);padding:8px 16px 0"><em>※ 조건: 총 공통비 800,000원, 1인 개별비 40,000원, VAT 10%. 대시보드에서 슬라이더로 시장가 조정하면 BEP 즉시 갱신.</em></p>
+      </div>
+
+      <h3>검증 시나리오 (N=20, netMargin=12%, retailMargin=35%, VAT=10%)</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>항목</th><th>값</th><th>계산</th></tr></thead>
+          <tbody>
+            <tr><td>차량 (45인승 대형)</td><td>600,000원/일</td><td>공통비</td></tr>
+            <tr><td>가이드 (영어)</td><td>200,000원/일</td><td>공통비</td></tr>
+            <tr><td>경복궁</td><td>15,000원/1인</td><td>개별비 (체험 60분·체류 120분)</td></tr>
+            <tr><td>남산서울타워</td><td>25,000원/1인</td><td>개별비 (체험 45분·체류 90분)</td></tr>
+            <tr class="phase-row"><td><strong>총 공통비</strong></td><td colspan="2"><strong>800,000원</strong></td></tr>
+            <tr class="phase-row"><td><strong>총 개별비 (1인)</strong></td><td colspan="2"><strong>40,000원</strong></td></tr>
+            <tr><td>1인 원가</td><td><strong>80,000원</strong></td><td>40,000 + 800,000/20</td></tr>
+            <tr><td>1인 공급가 (NET)</td><td><strong>89,600원</strong></td><td>80,000 × 1.12</td></tr>
+            <tr><td>1인 판매가 (RETAIL)</td><td><strong>118,800원</strong></td><td>80,000 × 1.35 × 1.10</td></tr>
+            <tr><td>판매 합계</td><td>2,376,000원</td><td>118,800 × 20</td></tr>
+            <tr><td>공급 합계</td><td>1,792,000원</td><td>89,600 × 20</td></tr>
+            <tr><td>원가 합계</td><td>1,600,000원</td><td>80,000 × 20</td></tr>
+            <tr><td>VAT 합계</td><td>216,000원</td><td>2,376,000 × 0.10 / 1.10</td></tr>
+            <tr class="phase-row"><td><strong>직판 수익</strong></td><td><strong>560,000원</strong></td><td>(2,376,000−216,000) − 1,600,000</td></tr>
+            <tr class="phase-row"><td><strong>직판 수익률</strong></td><td><strong>25.93%</strong></td><td>560,000 / 2,160,000</td></tr>
+            <tr><td>B2B 수익</td><td>192,000원</td><td>1,792,000 − 1,600,000</td></tr>
+            <tr><td>B2B 수익률</td><td>10.71%</td><td>192,000 / 1,792,000</td></tr>
+            <tr><td>채널 마진 (파트너 몫)</td><td>584,000원</td><td>2,376,000 − 1,792,000</td></tr>
+            <tr><td>채널 마진율</td><td>32.59%</td><td>584,000 / 1,792,000</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>규모의 경제 효과 (N 변동 시뮬레이션)</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>인원 N</th><th>공통비 분담</th><th>1인 원가</th><th>1인 공급가</th><th>1인 판매가</th><th>직판 수익률</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>800,000</td><td>840,000</td><td>940,800</td><td>1,247,400</td><td>25.93%</td></tr>
+            <tr><td>10</td><td>80,000</td><td>120,000</td><td>134,400</td><td>178,200</td><td>25.93%</td></tr>
+            <tr class="phase-row"><td><strong>20</strong></td><td><strong>40,000</strong></td><td><strong>80,000</strong></td><td><strong>89,600</strong></td><td><strong>118,800</strong></td><td><strong>25.93%</strong></td></tr>
+            <tr><td>50</td><td>16,000</td><td>56,000</td><td>62,720</td><td>83,160</td><td>25.93%</td></tr>
+            <tr><td>100</td><td>8,000</td><td>48,000</td><td>53,760</td><td>71,280</td><td>25.93%</td></tr>
+            <tr><td>500</td><td>1,600</td><td>41,600</td><td>46,592</td><td>61,776</td><td>25.93%</td></tr>
+            <tr><td>1000</td><td>800</td><td>40,800</td><td>45,696</td><td>60,588</td><td>25.93%</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p style="margin-top:12px;font-size:13px;color:var(--ink-500)"><em>※ 마진율은 인원과 무관하게 일정. 공통비 분담만 변하여 1인 단가가 급락. 이 시각적 효과가 슬라이더의 핵심.</em></p>
+
+      <h3>의사결정 신호 (Decision Signals)</h3>
+      <div class="cards">
+        <div class="card card-red"><div class="card-label">경고</div><div class="card-title">채널 마진율 &lt; 20%</div><div class="card-body">B2B 파트너가 안 받음. 공급가 인하 or 판매가 인상 필요.</div></div>
+        <div class="card card-red"><div class="card-label">경고</div><div class="card-title">직판 수익률 &lt; 15%</div><div class="card-body">상품 재설계 필요. 원가 과다 or 판매가 낮음.</div></div>
+        <div class="card"><div class="card-label">주의</div><div class="card-title">B2B 수익률 &lt; 8%</div><div class="card-body">공급 포기 or 원가 재협상.</div></div>
+        <div class="card"><div class="card-label">Good</div><div class="card-title">직판 수익률 25~35%</div><div class="card-body">건강한 구간. 경쟁사 대비 가격 매력도 유지.</div></div>
+      </div>
+    </section>
+
+    <!-- ========== 09 화면 구성 ========== -->
+    <section id="s09">
+      <div class="sec-head">
+        <span class="sec-num">09</span>
+        <div>
+          <span class="sec-kicker">Screen Composition</span>
+          <div class="sec-title">화면 구성 &amp; UX 흐름</div>
+        </div>
+      </div>
+
+      <h3>① 대시보드 (메인 화면) 🌟 — "패키지 한눈에 보기"</h3>
+      <p>앱의 심장. 빌더와 연동되어 실시간 갱신. 모든 사용자가 가장 오래 머무는 화면. <strong>금액·시간·손익분기점·메모</strong>를 한 화면에서 즉시 파악.</p>
+
+      <div class="callout callout-blue">
+        <div class="callout-title">★ 대시보드 핵심 블록 (신규 반영)</div>
+        ① <strong>BEP 카드</strong> — "시장가 15만원 기준, 9명 이상부터 수익 +" 즉시 표시<br>
+        ② <strong>한눈에 요약 리본</strong> — 총액·총 시간·총 거리·Day 수·BEP·안전 마진을 상단 한 줄로<br>
+        ③ <strong>메모 패널</strong> — 패키지 전체 메모 + Day별 메모 + 활동별 메모 접힘/펼침<br>
+        ④ <strong>타임라인 뷰</strong> — 전체 일정을 간트처럼 가로 띠로 (Day별 시간축)<br>
+        ⑤ <strong>Day별 소계 매트릭스 ★</strong> — 각 Day마다 인원수 · 공통비 · 개별비 · 원가 · 공급가 · 판매가 소계를 행으로, 맨 아래에 총합
+      </div>
+
+      <h4>Day별 소계 매트릭스 (샘플)</h4>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr><th>Day</th><th>날짜</th><th>인원 N_d</th><th>공통비</th><th>개별비(1인)</th><th>Day 원가</th><th>Day 공급가</th><th>Day 판매가</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Day 1 — 공항·서울</td><td>2026-05-15</td><td><strong>30명</strong></td><td>₩800,000</td><td>₩40,000</td><td>₩2,000,000</td><td>₩2,240,000</td><td>₩2,970,000</td></tr>
+            <tr><td>Day 2 — DMZ</td><td>2026-05-16</td><td><strong>20명</strong></td><td>₩900,000</td><td>₩55,000</td><td>₩2,000,000</td><td>₩2,240,000</td><td>₩2,970,000</td></tr>
+            <tr><td>Day 3 — 경복궁·쇼핑</td><td>2026-05-17</td><td><strong>15명</strong></td><td>₩800,000</td><td>₩45,000</td><td>₩1,475,000</td><td>₩1,652,000</td><td>₩2,190,000</td></tr>
+            <tr><td>Day 4 — 송객</td><td>2026-05-18</td><td><strong>30명</strong></td><td>₩600,000</td><td>₩0</td><td>₩600,000</td><td>₩672,000</td><td>₩891,000</td></tr>
+            <tr class="phase-row"><td><strong>총합</strong></td><td>4일</td><td><strong>연인원 95</strong></td><td><strong>₩3,100,000</strong></td><td>—</td><td><strong>₩6,075,000</strong></td><td><strong>₩6,804,000</strong></td><td><strong>₩9,021,000</strong></td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:12.5px;color:var(--ink-500);padding:8px 16px 0"><em>※ Day마다 인원 다름(30/20/15/30). 실무: 일부 고객이 중간 이탈·자유시간·개별 일정 선택. 공통비(차량·가이드)는 Day 고정, 개별비(1인당)는 Day 인원에 곱. 연인원=각 Day 인원 합.</em></p>
+      </div>
+      <div class="wire">┌───────────────────────────────────────────────────────────────┐
+│ [패키지명] 3박4일 서울·강화·DMZ     [저장] [PDF▼] [공유]    │
+├───────────────────────────────────────────────────────────────┤
+│ 인원수 ▓▓▓▓▓▓▓▓▓░░░░░░░░░ 20명  [1] [10] [50] [100] [500] │
+│ 마진 NET: ▓▓▓░░░░ 12%  |  RETAIL: ▓▓▓▓▓▓▓░ 35%  |  VAT 10% │
+│ 환율: KRW · USD · JPY · CNY                                  │
+├─────────────────┬─────────────────┬─────────────────────────┤
+│  1인 원가        │  1인 공급가(NET) │  1인 판매가(RETAIL)     │
+│  ₩ 80,000       │  ₩ 89,600       │  ₩ 118,800              │
+│  (원가 구성 →)   │  (B2B 입금)     │  (직판 VAT 포함)         │
+├─────────────────┼─────────────────┼─────────────────────────┤
+│  판매 합계       │  공급 합계       │  직판 수익률             │
+│  ₩ 2,376,000    │  ₩ 1,792,000    │  25.93% ▲                │
+├─────────────────┴─────────────────┴─────────────────────────┤
+│ [공급가 중심] [판매가 중심] [◉ 전체 비교]                      │
+│                                                               │
+│  Day  차량+가이드   관광지1(1인)  관광지2(1인)   합계        │
+│   1   ₩800,000      15,000        25,000        880,000      │
+│                                                               │
+│  비교 테이블 (1·10·50·100·500·1000)                          │
+└───────────────────────────────────────────────────────────────┘</div>
+
+      <h3>② 패키지 빌더</h3>
+      <p>Day별 블록으로 구성. 각 Day에 차량·가이드·출발지·도착지·활동을 카카오 지도 검색으로 추가.</p>
+      <div class="wire">┌───────────────────────────────────────────────────────────────┐
+│ [Day 1 ▼] [+Day 추가]  시작 시각 08:30                       │
+├───────────────────────────────────────────────────────────────┤
+│ 출발지 🔍 [서울역]                  도착지 🔍 [호텔 명동]    │
+│ 차량   ▼ [45인승 대형 ₩600,000]   가이드 ▼ [영어 ₩200,000] │
+├───────────────────────────────────────────────────────────────┤
+│  + 활동 추가                                                  │
+│  🏛  [경복궁]         1인 ₩15,000  체험 60분  체류 120분 [✕] │
+│  🎢  [남산서울타워]   1인 ₩25,000  체험 45분  체류 90분  [✕] │
+├───────────────────────────────────────────────────────────────┤
+│ Day 집계:  이동 12km · 35분 | 체험 105분 | 체류 210분         │
+│           Day 소요: 04시 05분 → 도착 12:35                    │
+└───────────────────────────────────────────────────────────────┘</div>
+
+      <h3>③ 결과물 다운로드 &amp; 공유</h3>
+      <div class="metric-split">
+        <div class="metric-box">
+          <h5>PDF 3종</h5>
+          <ul>
+            <li><strong>내부용</strong> — 원가·공급가·판매가·수익률 전체 공개</li>
+            <li><strong>B2B 공급용</strong> — NET 단가·일정만 (원가·마진 숨김)</li>
+            <li><strong>고객용</strong> — 브랜드·일정·RETAIL 단가 (VAT 포함)</li>
+          </ul>
+        </div>
+        <div class="metric-box">
+          <h5>공유</h5>
+          <ul>
+            <li><strong>XLSX</strong> — B2B 가공용 원시 데이터 (SheetJS)</li>
+            <li><strong>URL</strong> — Phase 0: lz-string 압축 / Phase 1+: `/u/nickname/slug`</li>
+            <li><strong>QR</strong> — 미팅·메신저 즉시 공유</li>
+            <li><strong>Web Share</strong> — 카톡·이메일 네이티브 호출</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>④ 내 패키지 (Phase 1+)</h3>
+      <p>Supabase에 저장된 패키지 카드 리스트. 복제·공개/비공개·팀 공유·삭제.</p>
+
+      <h3>⑤ 공개 피드 (Phase 2+)</h3>
+      <p>사용자가 '공개' 토글한 패키지의 공개 리스트. 지역·카테고리·기간 필터. SEO 최적화. 누구나 '복제' 버튼으로 자기 계정에 가져가기 가능.</p>
+
+      <h3>⑥ CMS 관리자 (Phase 1+)</h3>
+      <ul>
+        <li>차량·가이드 글로벌 단가 관리</li>
+        <li>카테고리·아이콘 편집</li>
+        <li>사용자 승인·차단·역할 지정</li>
+        <li>워터트리 상품 광고 슬롯 관리 (노출 상품·지역·카테고리·우선순위)</li>
+        <li>AdSense 슬롯 on/off</li>
+        <li>프리미엄 구독 플랜·쿠폰 관리</li>
+        <li>사용 통계 대시보드 (DAU·MAU·전환율)</li>
+      </ul>
+
+      <h3>⑦ 설정</h3>
+      <ul>
+        <li>환율 수동 갱신</li>
+        <li>마진·VAT 기본값</li>
+        <li>UI 언어 (ko/en/ja → 19개 확장)</li>
+        <li>자기 카탈로그 JSON 임포트/내보내기</li>
+      </ul>
+
+      <h3>오프라인 여행사 편의 기능 (글로벌 벤치마크 기반)</h3>
+      <p>Bókun · Rezdy · Checkfront · FareHarbor · TourCMS 등 글로벌 투어 예약·기획 SaaS를 레퍼런스로, <strong>오프라인 여행사가 실제로 가장 많이 요청하는 Top 10 편의 기능</strong>을 선별. 우선순위별로 Phase에 배치.</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>기능</th><th>왜 필요한가</th><th>레퍼런스</th><th>Phase</th></tr></thead>
+          <tbody>
+            <tr class="phase-row"><td>1</td><td><strong>연령대별 요금 분리</strong><br>성인·소아·유아·경로</td><td>인바운드 패밀리 투어에서 <strong>소아 50%·유아 무료</strong>는 업계 표준. 없으면 엑셀 복귀.</td><td>Bókun, Rezdy</td><td>0 (필수)</td></tr>
+            <tr class="phase-row"><td>2</td><td><strong>시즌별 가격</strong><br>성수기·비수기·공휴일</td><td>차량·가이드·숙박이 시즌마다 2~3배 차이. 시즌 고정 단가는 비현실적.</td><td>Checkfront, FareHarbor</td><td>0 (필수)</td></tr>
+            <tr><td>3</td><td><strong>패키지 템플릿 복제</strong></td><td>"서울 3박4일 표준" 같은 고정 코스를 1초에 복제 → 고객 조건만 변경.</td><td>Bókun Product Library</td><td>0</td></tr>
+            <tr><td>4</td><td><strong>드래그앤드롭 순서 변경</strong></td><td>Day 내 관광지 순서 빈번 조정. 엑셀에선 행 삭제·삽입 반복, UX 최악.</td><td>Rezdy, TourCMS</td><td>0</td></tr>
+            <tr><td>5</td><td><strong>포함/불포함 리스트</strong><br>Included / Not Included</td><td>견적서 필수 요소. "팁 불포함", "보험 별도" 등. 분쟁 예방.</td><td>모든 글로벌 OTA</td><td>0</td></tr>
+            <tr><td>6</td><td><strong>전체 여정 지도 미리보기</strong></td><td>Day 전체 동선을 지도 한 장에. 고객 설득 강력, 기획자 거리 감각 확보.</td><td>Google My Maps 활용 사례</td><td>0</td></tr>
+            <tr><td>7</td><td><strong>공급업체 연락처</strong><br>차량·가이드·식당·공연</td><td>확정 후 예약·정산 시 개별 연락. 내부 Rolodex 대체.</td><td>TourCMS Suppliers</td><td>1</td></tr>
+            <tr><td>8</td><td><strong>운영 체크리스트</strong><br>의전·픽업·알레르기</td><td>인바운드는 디테일 실수 1개가 컴플레인 직결. 항목 자동 체크.</td><td>Checkfront Ops Checklist</td><td>1</td></tr>
+            <tr><td>9</td><td><strong>자동 번역 (고객용 PDF)</strong><br>한국어 → 영/일/중</td><td>같은 코스를 언어별로 다시 쓰는 반복 작업 제거. DeepL/Papago API.</td><td>Bókun multilingual</td><td>1</td></tr>
+            <tr><td>10</td><td><strong>취소·환불 시나리오</strong><br>7일전 / 3일전 / 당일 손실</td><td>고객 취소 시 "얼마나 손해인가" 즉답. 약관과 함께 PDF 출력.</td><td>FareHarbor Cancellation</td><td>2</td></tr>
+            <tr><td>11</td><td><strong>What-if 차량 비교</strong><br>25인 vs 35인</td><td>"한 대 더 큰 차량이 1인당 얼마 절감?" 즉시 비교. 매출 확대 협상용.</td><td>자체 독창</td><td>2</td></tr>
+            <tr><td>12</td><td><strong>휴관·공휴일 경고</strong></td><td>"이 날 박물관 휴관" 사전 경고로 고객 실망 방지. 한국관광공사 공공 데이터.</td><td>자체 독창 (공공API)</td><td>2</td></tr>
+            <tr><td>13</td><td><strong>블랙아웃 날짜·체류 제한</strong></td><td>특정 날짜 예약 불가, 최소/최대 박수 제한. Capterra·GetApp 공통 요구.</td><td>Checkfront·Bokun</td><td>1</td></tr>
+            <tr><td>14</td><td><strong>쿠폰·프로모션 코드</strong></td><td>시즌 할인·얼리버드·단체 할인 자동 적용. Rezdy·Bokun 표준.</td><td>Rezdy</td><td>2</td></tr>
+            <tr><td>15</td><td><strong>브랜디드 PDF 커스텀</strong></td><td>로고·색상·푸터 연락처 자기 브랜드로. Travefy No.1 요구 기능.</td><td>Travefy</td><td>1</td></tr>
+            <tr><td>16</td><td><strong>공급사 확답 추적</strong><br>(Supplier Confirmation)</td><td>Hacker News 다수 언급. 차량·가이드·식당 확답 상태 한눈에. 엑셀에서 가장 번거로운 부분.</td><td>TourCMS</td><td>2</td></tr>
+            <tr><td>17</td><td><strong>AI 자동 콘텐츠·이미지</strong></td><td>2026 트렌드. 관광지 설명문·고객용 여정 소개 자동 생성. Claude API 연동 가능.</td><td>mTrip AI</td><td>2</td></tr>
+            <tr><td>18</td><td><strong>커미션 체인 4단계</strong><br>DMC→도매→소매→에이전트</td><td>한국 인바운드 커미션 9~20% 구조 모델링. Arival 기사 근거. 국내외 파트너 간 투명한 마진 분배.</td><td>자체 독창</td><td>2</td></tr>
+            <tr><td>19</td><td><strong>견적 이력·리비전</strong></td><td>고객 협상 과정에서 여러 버전 비교. 최종 확정 버전 잠금.</td><td>Tourplan</td><td>2</td></tr>
+            <tr><td>20</td><td><strong>가격 투명성 모드</strong><br>(한국 정부 정책 대응)</td><td>2026 한국 관광 정책: 가격 투명화 강화. 고객용 PDF에 "무엇이 포함/불포함"이 명시적. 정부 심의 대응.</td><td>Yanolja Research</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>핵심 데이터 모델 확장 (Phase 0 편의 기능)</h4>
+      <pre><code><span class="tok-com">// 연령대별 요금</span>
+<span class="tok-key">type</span> <span class="tok-typ">AgeTierPricing</span> = {
+  adult:  <span class="tok-typ">number</span>;       <span class="tok-com">// 1.0 (기준)</span>
+  child:  <span class="tok-typ">number</span>;       <span class="tok-com">// 0.5 (50%)</span>
+  infant: <span class="tok-typ">number</span>;       <span class="tok-com">// 0 (무료)</span>
+  senior?: <span class="tok-typ">number</span>;       <span class="tok-com">// 0.8 (경로 20% 할인)</span>
+};
+
+<span class="tok-com">// 시즌 가격</span>
+<span class="tok-key">type</span> <span class="tok-typ">SeasonPricing</span> = {
+  season:      <span class="tok-str">'peak'</span> | <span class="tok-str">'shoulder'</span> | <span class="tok-str">'off'</span> | <span class="tok-str">'holiday'</span>;
+  multiplier:  <span class="tok-typ">number</span>;       <span class="tok-com">// 1.2 = 성수기 20% 할증</span>
+  dateRanges:  { start: <span class="tok-typ">string</span>; end: <span class="tok-typ">string</span> }[];
+};
+
+<span class="tok-com">// 포함/불포함</span>
+<span class="tok-key">type</span> <span class="tok-typ">Inclusion</span> = {
+  included:    <span class="tok-typ">string</span>[];    <span class="tok-com">// ["호텔 조식", "가이드 팁", "공항 픽업"]</span>
+  notIncluded: <span class="tok-typ">string</span>[];    <span class="tok-com">// ["개인 경비", "여행자 보험"]</span>
+};
+
+<span class="tok-com">// 템플릿</span>
+<span class="tok-key">type</span> <span class="tok-typ">PackageTemplate</span> = {
+  id: <span class="tok-typ">string</span>;
+  basePackage: <span class="tok-typ">Package</span>;
+  usageCount: <span class="tok-typ">number</span>;            <span class="tok-com">// 복제 빈도 (자주 쓰는 것 상단 정렬)</span>
+};
+
+<span class="tok-com">// 공급업체</span>
+<span class="tok-key">type</span> <span class="tok-typ">Vendor</span> = {
+  id: <span class="tok-typ">string</span>;
+  type: <span class="tok-str">'vehicle'</span> | <span class="tok-str">'guide'</span> | <span class="tok-str">'restaurant'</span> | <span class="tok-str">'show'</span> | <span class="tok-str">'hotel'</span>;
+  name: <span class="tok-typ">string</span>;
+  phone: <span class="tok-typ">string</span>;
+  kakaoId?: <span class="tok-typ">string</span>;
+  memo?: <span class="tok-typ">string</span>;
+};</code></pre>
+    </section>
+
+    <!-- ========== 10 수익 모델 ========== -->
+    <section id="s10">
+      <div class="sec-head">
+        <span class="sec-num">10</span>
+        <div>
+          <span class="sec-kicker">Monetization</span>
+          <div class="sec-title">수익 모델 4종</div>
+        </div>
+      </div>
+
+      <div class="callout callout-blue" style="margin-bottom:24px">
+        <div class="callout-title">★ 수익화 도입 원칙 — 단계적 도입</div>
+        Phase 0~1은 <strong>순수 무료 공개</strong>. 사용자 가치 검증 최우선.<br>
+        Phase 2에서 <strong>광고만</strong> 먼저 도입 (AdSense + 워터트리 상품광고).<br>
+        프리미엄 구독은 <strong>MAU 5,000 검증 후</strong> 도입 (결제 수수료·법무 비용 발생).<br>
+        데이터 리포트는 Phase 3 B2B 영업 채널.
+      </div>
+
+      <div class="cards">
+        <div class="card card-blue">
+          <div class="card-label">수익 ① · Phase 2 시작</div>
+          <div class="card-title">Google AdSense</div>
+          <div class="card-body">대시보드 상단 720×90, 공유 페이지 사이드바 300×250, 빌더 푸터 인라인. 로그인/페이지 타입 기반 차등 노출. 심사는 <strong>Phase 2 진입 시 신청</strong>.</div>
+        </div>
+        <div class="card">
+          <div class="card-label">수익 ② · Phase 2 시작</div>
+          <div class="card-title">워터트리 상품 광고</div>
+          <div class="card-body">워터트리가 공급하는 실제 상품 노출(지역·카테고리 매칭). CMS에서 관리자가 우선순위 설정. 클릭 시 Trippose deeplink. <strong>자사 자원만 사용 → 즉시 가능</strong>.</div>
+        </div>
+        <div class="card card-gold">
+          <div class="card-label">수익 ③ · 유보</div>
+          <div class="card-title">프리미엄 구독 (월 29,000원)</div>
+          <div class="card-body">PDF 워터마크 제거 · 무제한 저장 · 팀 공유 5인 · AdSense 제거. <strong>MAU 5,000 검증 후 도입 결정</strong>. 토스페이먼츠 결제 수수료(2.5%) 부담 합리화되는 시점에만.</div>
+        </div>
+        <div class="card card-red">
+          <div class="card-label">수익 ④ · Phase 3</div>
+          <div class="card-title">데이터 리포트 판매</div>
+          <div class="card-body">월간 인기 코스 TOP 100, 계절별 단가 벤치마크, 지역별 체류 시간 패턴. 관광공사·대형 OTA·지자체 연 계약. 익명 집계만 · 개발비 0원.</div>
+        </div>
+      </div>
+
+      <h3>수익 시뮬레이션 (Phase 2 광고 도입 후)</h3>
+      <p style="margin-bottom:12px;font-size:13px;color:var(--ink-500)"><em>※ Phase 0~1은 의도적 무수익 구간. 아래는 Phase 2 AdSense·상품광고 도입 이후 월 기준.</em></p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>지표</th><th>보수</th><th>중립</th><th>낙관</th></tr></thead>
+          <tbody>
+            <tr><td>가입자 (월)</td><td>500</td><td>1,500</td><td>3,000</td></tr>
+            <tr><td>DAU</td><td>50</td><td>200</td><td>500</td></tr>
+            <tr><td>MAU</td><td>200</td><td>800</td><td>1,800</td></tr>
+            <tr><td>유료 전환율</td><td>1.0%</td><td>2.0%</td><td>4.0%</td></tr>
+            <tr><td>유료 사용자 (MAU 5,000 후 도입)</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr><td><strong>구독 MRR (Phase 2 유보)</strong></td><td><strong>0원</strong></td><td><strong>0원</strong></td><td><strong>0원</strong></td></tr>
+            <tr><td>AdSense RPM (1000뷰당)</td><td>$1.5</td><td>$3</td><td>$6</td></tr>
+            <tr><td><strong>AdSense (월)</strong></td><td><strong>50,000원</strong></td><td><strong>400,000원</strong></td><td><strong>1,800,000원</strong></td></tr>
+            <tr><td>워터트리 상품 광고 CTR</td><td>0.5%</td><td>1.5%</td><td>3%</td></tr>
+            <tr><td><strong>상품 광고 전환 (월)</strong></td><td><strong>30,000원</strong></td><td><strong>200,000원</strong></td><td><strong>900,000원</strong></td></tr>
+            <tr class="phase-row"><td><strong>월 총 수익 (Phase 2)</strong></td><td><strong>80,000원</strong></td><td><strong>600,000원</strong></td><td><strong>2,700,000원</strong></td></tr>
+            <tr><td>Phase 3 리포트 (연)</td><td>1,500만원</td><td>5,000만원</td><td>1.2억원</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-gold">
+        <div class="callout-title">중립 시나리오가 Phase 2 목표</div>
+        월 광고 수익 60만원 + Phase 3 연 리포트 5,000만원 = <strong>연 약 5,700만원</strong>.<br>
+        <strong>연 고정비: 도메인 2만원 + 트래픽 증가 시 Supabase Pro 30만원</strong> (MAU 50,000 돌파 후).<br>
+        개발비 0원 (AI 개발 + 재사용 자산 2개). 순이익률 95%+.
+      </div>
+    </section>
+
+    <!-- ========== 11 인증·공유 ========== -->
+    <section id="s11">
+      <div class="sec-head">
+        <span class="sec-num">11</span>
+        <div>
+          <span class="sec-kicker">Auth &amp; Sharing</span>
+          <div class="sec-title">인증 &amp; 공유 전략</div>
+        </div>
+      </div>
+
+      <h3>로그인 방식 (이메일+비번 + 구글 OAuth 권장)</h3>
+      <div class="cards">
+        <div class="card"><div class="card-label">이메일+비번</div><div class="card-title">공용 계정 대응</div><div class="card-body">인바운드 여행사들은 team@agency.co.kr 공용 계정으로 운영하는 곳이 많음. 이메일 로그인 필수.</div></div>
+        <div class="card card-gold"><div class="card-label">Google OAuth</div><div class="card-title">원클릭 전환율</div><div class="card-body">사무직 대부분이 Google Workspace 사용. 원클릭 가입으로 전환율 극대화.</div></div>
+        <div class="card"><div class="card-label">닉네임</div><div class="card-title">공유 URL 경로</div><div class="card-body">가입 후 필수 입력. `/u/nickname/package-slug` 형태의 공개 URL에 사용.</div></div>
+        <div class="card"><div class="card-label">RLS</div><div class="card-title">데이터 격리</div><div class="card-body">Supabase Row Level Security로 본인 패키지만 편집. 공개 패키지는 모두 조회 가능.</div></div>
+      </div>
+
+      <h3>공개도 체계 (기본 비공개 + 선택 공개)</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Visibility</th><th>URL 접근</th><th>피드 노출</th><th>SEO 색인</th><th>복제 허용</th></tr></thead>
+          <tbody>
+            <tr><td><strong>private</strong> (기본)</td><td>본인만</td><td>❌</td><td>❌</td><td>❌</td></tr>
+            <tr><td><strong>unlisted</strong></td><td>링크 가진 사람만</td><td>❌</td><td>❌</td><td>선택</td></tr>
+            <tr><td><strong>public</strong></td><td>누구나</td><td>✅</td><td>✅</td><td>✅</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-blue">
+        <div class="callout-title">★ 바이럴 메커니즘</div>
+        공개 패키지는 누구나 '복제' 버튼으로 자기 계정에 가져가 수정·사용 가능. 이것이 B2B 파트너사 간 코스 공유를 활성화하고, 앱 사용자 증가의 핵심 바이럴 루프가 된다.
+      </div>
+    </section>
+
+    <!-- ========== 12 기술 스택 ========== -->
+    <section id="s12">
+      <div class="sec-head">
+        <span class="sec-num">12</span>
+        <div>
+          <span class="sec-kicker">Tech Stack</span>
+          <div class="sec-title">기술 스택 &amp; 아키텍처</div>
+        </div>
+      </div>
+
+      <h3>프런트엔드</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>레이어</th><th>선택</th><th>이유</th></tr></thead>
+          <tbody>
+            <tr><td>프레임워크</td><td>Next.js 16 App Router</td><td>koreacasino에서 검증. SSR·SSG·PWA 네이티브 지원. React 19 최신.</td></tr>
+            <tr><td>스타일</td><td>Tailwind v4 + shadcn/ui</td><td>빠른 프로토타이핑, 디자인 토큰 일관성, 컴포넌트 접근성.</td></tr>
+            <tr><td>PWA</td><td>@serwist/next v9</td><td>next-pwa 유지보수 중단. Serwist는 Workbox 후속 (대표님 결정 로그).</td></tr>
+            <tr><td>다국어</td><td>next-intl</td><td>MVP는 ko/en/ja, 확장 시 19언어. koreacasino 메시지 구조 재사용.</td></tr>
+            <tr><td>상태 관리</td><td>zustand + localStorage persist</td><td>Redux 과잉. zustand로 충분. 자동 저장 간편.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>백엔드 &amp; 서비스</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>레이어</th><th>선택</th><th>이유</th></tr></thead>
+          <tbody>
+            <tr><td>인증·DB (Phase 1+)</td><td>Supabase</td><td>Auth + Postgres + RLS + Storage 원스톱. koreacasino 이미 사용. 무료 한도 충분.</td></tr>
+            <tr><td>지도·길찾기</td><td>Kakao API</td><td>한국 POI·도로 데이터 최고. 월 30만 호출 무료. 한국어 네이티브.</td></tr>
+            <tr><td>결제 (MAU 5,000 후)</td><td>토스페이먼츠</td><td>국내 정기결제 최적. 유보 — 프리미엄 구독 도입 검증 후 연동.</td></tr>
+            <tr><td>분석</td><td>GA4 + Supabase 이벤트</td><td>GA4 무료 + RLS 기반 내부 이벤트 이중 추적.</td></tr>
+            <tr><td>광고 (Phase 2 시작)</td><td>Google AdSense</td><td>승인 심사 최대 2주. <strong>Phase 2 진입 시점에</strong> 신청. 대체재 Kakao AdFit.</td></tr>
+            <tr><td>장소 사진</td><td>Kakao 장소 사진 + Unsplash/Pexels API + Wikimedia + Supabase Storage(사용자 업로드)</td><td>저작권 안전한 경로만. CC0·CC-BY·TOS 허용 범위. 크롤링 금지.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>유틸리티 라이브러리</h3>
+      <p>
+        <span class="tag tag-teal">lz-string</span>
+        <span class="tag tag-teal">qrcode</span>
+        <span class="tag tag-teal">xlsx (SheetJS)</span>
+        <span class="tag tag-gold">window.print() + @media print (PDF)</span>
+        <span class="tag tag-gray">Node 20+</span>
+        <span class="tag tag-gray">npm (pnpm 아님)</span>
+      </p>
+
+      <h3>디자인 시스템 — Claude-inspired 2026</h3>
+      <p style="margin-bottom:16px">실제 PWA 앱 구현 시 <strong>Anthropic/Claude의 2026년 디자인 언어</strong>를 기본 테마로 채택. 따뜻한 크림 배경 + 코랄 액센트 + 넉넉한 여백 + 세리프·산세리프 혼용으로 <strong>인간적이고 차분한 도구</strong> 인상. 엑셀의 차가운 표 경험에서 벗어남. 이 기획서 자체에도 토큰을 이미 반영(병행 팔레트).</p>
+
+      <div class="cards" style="margin-bottom:24px">
+        <div class="card" style="border-top-color:#CC785C;background:#F0EEE6;padding:28px 22px">
+          <div class="card-label" style="color:#B55F48">Primary</div>
+          <div class="card-title" style="color:#CC785C;font-family:Georgia,serif">Claude Coral</div>
+          <div class="card-body" style="color:#3D3929"><code style="background:#FAF9F5;color:#191919">#CC785C</code><br>Anthropic 시그니처 코랄. CTA·주요 강조. 충분한 명도 대비로 접근성 확보.</div>
+        </div>
+        <div class="card" style="border-top-color:#3D3929;background:#F0EEE6;padding:28px 22px">
+          <div class="card-label" style="color:#3D3929">Background</div>
+          <div class="card-title" style="color:#191919;font-family:Georgia,serif">Claude Cream</div>
+          <div class="card-body" style="color:#3D3929"><code style="background:#FAF9F5;color:#191919">#F0EEE6</code><br>따뜻한 크림. 하루 종일 봐도 눈이 편함. 기획자 장시간 작업용.</div>
+        </div>
+        <div class="card" style="border-top-color:#191919;background:#FAF9F5;padding:28px 22px">
+          <div class="card-label" style="color:#191919">Surface</div>
+          <div class="card-title" style="color:#191919;font-family:Georgia,serif">Ivory</div>
+          <div class="card-body" style="color:#3D3929"><code style="background:#F0EEE6;color:#191919">#FAF9F5</code><br>카드·모달 배경. Cream 위에 계층 만들기.</div>
+        </div>
+        <div class="card" style="border-top-color:#191919;background:#191919;padding:28px 22px">
+          <div class="card-label" style="color:#C4C2B5">Ink</div>
+          <div class="card-title" style="color:#FAF9F5;font-family:Georgia,serif">Dark Ink</div>
+          <div class="card-body" style="color:#C4C2B5"><code style="background:#3D3929;color:#FAF9F5">#191919</code><br>본문 텍스트. 순검정 대신 따뜻한 먹빛.</div>
+        </div>
+      </div>
+
+      <h4>Tailwind v4 Config 스니펫 (PWA 구현용)</h4>
+      <pre><code><span class="tok-com">/* app/globals.css — @theme 블록으로 토큰 등록 */</span>
+<span class="tok-key">@theme</span> {
+  <span class="tok-com">/* Claude Palette */</span>
+  --color-claude-cream:      <span class="tok-str">#F0EEE6</span>;
+  --color-claude-ivory:      <span class="tok-str">#FAF9F5</span>;
+  --color-claude-coral:      <span class="tok-str">#CC785C</span>;
+  --color-claude-coral-dark: <span class="tok-str">#B55F48</span>;
+  --color-claude-ink:        <span class="tok-str">#191919</span>;
+  --color-claude-ink-soft:   <span class="tok-str">#3D3929</span>;
+  --color-claude-sand:       <span class="tok-str">#D4CCB0</span>;
+
+  <span class="tok-com">/* Typography — 세리프·산세리프 혼용 */</span>
+  --font-serif: <span class="tok-str">"Tiempos Text"</span>, <span class="tok-str">"Georgia"</span>, serif;        <span class="tok-com">/* 타이틀·강조 */</span>
+  --font-sans:  <span class="tok-str">"Inter"</span>, <span class="tok-str">"Noto Sans KR"</span>, sans-serif;      <span class="tok-com">/* 본문·UI */</span>
+  --font-mono:  <span class="tok-str">"JetBrains Mono"</span>, monospace;              <span class="tok-com">/* 코드·숫자 KPI */</span>
+
+  <span class="tok-com">/* 여백 철학 — 넉넉하게 */</span>
+  --spacing-page-x: <span class="tok-num">max</span>(<span class="tok-num">24px</span>, <span class="tok-num">5vw</span>);
+  --spacing-section: <span class="tok-num">96px</span>;
+
+  <span class="tok-com">/* Radius — 자연스러운 둥글기 */</span>
+  --radius-card: <span class="tok-num">12px</span>;
+  --radius-button: <span class="tok-num">10px</span>;
+}
+
+<span class="tok-com">/* 기본 body */</span>
+body {
+  background: <span class="tok-typ">var</span>(--color-claude-cream);
+  color: <span class="tok-typ">var</span>(--color-claude-ink);
+  font-family: <span class="tok-typ">var</span>(--font-sans);
+}
+h1, h2, h3 { font-family: <span class="tok-typ">var</span>(--font-serif); letter-spacing: -0.02em; }</code></pre>
+
+      <h4>디자인 원칙 6가지</h4>
+      <div class="cards">
+        <div class="card"><div class="card-label">원칙 1</div><div class="card-title">따뜻한 중립</div><div class="card-body">차가운 흰색·순검정 대신 크림·먹빛. 장시간 사용해도 피로 낮음.</div></div>
+        <div class="card"><div class="card-label">원칙 2</div><div class="card-title">타이포 주연</div><div class="card-body">세리프(제목)+산세리프(본문)+모노(숫자). 3가지 가족으로 위계 명확.</div></div>
+        <div class="card"><div class="card-label">원칙 3</div><div class="card-title">여백은 사치가 아니다</div><div class="card-body">섹션 96px·카드 내부 28px. "꽉 채우기"는 엑셀의 자산, 우리는 버림.</div></div>
+        <div class="card"><div class="card-label">원칙 4</div><div class="card-title">코랄 한 점</div><div class="card-body">CTA·KPI·경고만 코랄. 전체가 코랄이면 전체가 무강조. 규율 있는 사용.</div></div>
+        <div class="card"><div class="card-label">원칙 5</div><div class="card-title">모션은 0.2초 이하</div><div class="card-body">슬라이더·토글·페이드 모두 0.15~0.2s. 빠른 피드백이 기획자 사고 속도 유지.</div></div>
+        <div class="card"><div class="card-label">원칙 6</div><div class="card-title">숫자는 큰 모노</div><div class="card-body">KPI·금액은 JetBrains Mono 큰 사이즈. 0과 O, 1과 l 혼동 제거.</div></div>
+      </div>
+
+      <h3>아키텍처 다이어그램</h3>
+      <div class="wire">                 ┌─────────────────────────────────────┐
+                 │    사용자 (브라우저/PWA 앱)          │
+                 └──────────────┬──────────────────────┘
+                                │ HTTPS
+                 ┌──────────────▼──────────────────────┐
+                 │    Next.js 16 App Router + PWA      │
+                 │  ┌─────────────────────────────┐    │
+                 │  │ 대시보드 · 빌더 · 견적서 · CMS │    │
+                 │  └─────────────────────────────┘    │
+                 │  ┌─────────────────────────────┐    │
+                 │  │ Service Worker (@serwist)    │    │
+                 │  │  ├ 이미지 CacheFirst 30일    │    │
+                 │  │  ├ API NetworkFirst 1일      │    │
+                 │  │  └ 오프라인 폴백             │    │
+                 │  └─────────────────────────────┘    │
+                 └──────┬──────────┬──────────┬────────┘
+                        │          │          │
+            ┌───────────▼─┐  ┌─────▼────┐  ┌─▼──────────────┐
+            │  Supabase   │  │ Kakao API │  │ 토스페이먼츠   │
+            │  (P1+)      │  │ (지도·길) │  │ (P2+)          │
+            │  Auth       │  └───────────┘  └────────────────┘
+            │  Postgres   │
+            │  RLS        │  ┌─────────────┐ ┌───────────────┐
+            │  Storage    │  │ Google Ads  │ │ GA4 분석      │
+            └─────────────┘  └─────────────┘ └───────────────┘</div>
+    </section>
+
+    <!-- ========== 13 디렉토리 ========== -->
+    <section id="s13">
+      <div class="sec-head">
+        <span class="sec-num">13</span>
+        <div>
+          <span class="sec-kicker">Directory</span>
+          <div class="sec-title">디렉토리 구조</div>
+        </div>
+      </div>
+
+      <pre><code>c:/AI/투어패키지단가계산/
+├── package.json, next.config.ts, tsconfig.json
+├── .env.local                      <span class="tok-com"># NEXT_PUBLIC_KAKAO_REST_API_KEY 등</span>
+├── public/ (manifest, icons/, sw.js)
+├── src/
+│   ├── app/
+│   │   ├── [locale]/
+│   │   │   ├── layout.tsx
+│   │   │   ├── page.tsx                    <span class="tok-com"># 랜딩/홈</span>
+│   │   │   ├── builder/[id]/page.tsx       <span class="tok-com"># 패키지 빌더</span>
+│   │   │   ├── dashboard/[id]/page.tsx     <span class="tok-com"># 메인 대시보드 ★</span>
+│   │   │   ├── quote/[id]/page.tsx         <span class="tok-com"># PDF 미리보기</span>
+│   │   │   ├── share/page.tsx              <span class="tok-com"># Phase 0 URL 복원</span>
+│   │   │   ├── u/[nickname]/[slug]/page.tsx <span class="tok-com"># Phase 1+ 공개 프로필</span>
+│   │   │   ├── course/                     <span class="tok-com"># Phase 2+ SEO 허브</span>
+│   │   │   ├── (auth)/login, signup
+│   │   │   ├── my/                         <span class="tok-com"># 내 패키지</span>
+│   │   │   └── admin/ (vehicles, guides, users, ads, plans)
+│   │   ├── api/                            <span class="tok-com"># Phase 1+ Supabase SSR</span>
+│   │   └── sw.ts
+│   ├── components/
+│   │   ├── builder/, dashboard/, quote/, share/, pwa/, ads/, admin/, ui/
+│   ├── data/ (vehicles.json, guides.json, categories.json)
+│   ├── lib/
+│   │   ├── pricing.ts                      <span class="tok-com"># ★ 유닛 테스트 필수</span>
+│   │   ├── currency.ts, kakao.ts, share.ts, xlsx-export.ts, storage.ts
+│   │   ├── supabase/ (client.ts, server.ts)
+│   │   └── ads/
+│   ├── store/package-store.ts
+│   ├── i18n/, messages/
+│   └── db/                                 <span class="tok-com"># Phase 1+ Supabase 타입</span>
+└── CLAUDE.md                               <span class="tok-com"># 프로젝트 지침</span></code></pre>
+    </section>
+
+    <!-- ========== 14 검증 ========== -->
+    <section id="s14">
+      <div class="sec-head">
+        <span class="sec-num">14</span>
+        <div>
+          <span class="sec-kicker">Verification &amp; QA</span>
+          <div class="sec-title">검증 &amp; QA 기준</div>
+        </div>
+      </div>
+
+      <h3>Phase 0 출시 전 체크리스트</h3>
+      <ol>
+        <li><code>npm install &amp;&amp; npm run dev</code> → 개발 서버 기동</li>
+        <li><strong>빌더 시나리오</strong>: Day 1 생성 → 45인승 + 영어 가이드 + 경복궁(15,000·60분·120분) + 남산타워(25,000·45분·90분) 추가</li>
+        <li><strong>계산 검증</strong>: N=20, netMargin=12%, retailMargin=35%, VAT=10% → 1인 원가 80,000 / 공급가 89,600 / 판매가 118,800 / 직판 수익 560,000 / 수익률 25.93% 확인</li>
+        <li><strong>N=1000 슬라이더</strong>: 공통비 분담 800원 즉시 반영</li>
+        <li><strong>Day별 인원 변동 검증</strong>: 4일 패키지 → Day1=30·Day2=20·Day3=15·Day4=30 입력 → 각 Day 소계 자동 계산 → 연인원 95·총 원가 6,075,000원 · 총 판매가 9,021,000원 화면 일치 확인</li>
+        <li><strong>지도 검증</strong>: Day 1 두 장소 legs 자동 생성, 총 거리·시간 표시</li>
+        <li><strong>PDF 3종</strong>: 각 버전 원가·마진 숨김 규칙 준수</li>
+        <li><strong>공유 URL</strong> → QR 스캔 → 다른 브라우저 복원 일치</li>
+        <li><strong>PWA 설치</strong>: Chrome 설치 → 비행기모드 → 저장 패키지 열람·계산 동작</li>
+        <li><strong>Lighthouse</strong>: PWA ≥ 90, Performance ≥ 85</li>
+        <li><strong>유닛 테스트</strong>: <code>src/lib/pricing.ts</code> 100% 커버리지</li>
+      </ol>
+
+      <h3>Phase 1 추가 체크 (무료 공개)</h3>
+      <ul>
+        <li>구매한 독립 도메인 DNS 연결 · HTTPS 자동 발급 확인</li>
+        <li>이메일·구글 로그인 → 닉네임 설정 → 패키지 저장 → 타 브라우저에서 <code>/u/nickname/slug</code> 접속 복원</li>
+        <li>비공개 패키지 타인 접속 시 403</li>
+        <li>CMS에서 차량 단가 수정 → 빌더에 실시간 반영</li>
+        <li>RLS 정책 위반 시도 → 차단 확인</li>
+        <li>광고·결제 코드 없음 확인 (Phase 2에 도입)</li>
+      </ul>
+
+      <h3>Phase 2 추가 체크 (광고 1차)</h3>
+      <ul>
+        <li>AdSense 슬롯 노출 (승인 후 실제 광고)</li>
+        <li>워터트리 상품 광고 슬롯 지역·카테고리 매칭 확인</li>
+        <li>공개 피드 SEO 메타태그·sitemap.xml 확인</li>
+      </ul>
+
+      <h3>품질 게이트</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>항목</th><th>기준</th><th>자동화</th></tr></thead>
+          <tbody>
+            <tr><td>Lighthouse PWA</td><td>≥ 90</td><td>CI</td></tr>
+            <tr><td>Lighthouse Performance</td><td>≥ 85</td><td>CI</td></tr>
+            <tr><td>Lighthouse Accessibility</td><td>≥ 95</td><td>CI</td></tr>
+            <tr><td>pricing.ts 유닛 테스트</td><td>100% 커버리지</td><td>vitest</td></tr>
+            <tr><td>TypeScript 엄격 모드</td><td>에러 0</td><td>tsc --noEmit</td></tr>
+            <tr><td>ESLint</td><td>경고 0</td><td>eslint CI</td></tr>
+            <tr><td>번들 사이즈</td><td>초기 JS &lt; 200KB</td><td>next-bundle-analyzer</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== 15 선행 준비 ========== -->
+    <section id="s15">
+      <div class="sec-head">
+        <span class="sec-num">15</span>
+        <div>
+          <span class="sec-kicker">Prerequisites</span>
+          <div class="sec-title">선행 준비 사항</div>
+        </div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>항목</th><th>언제</th><th>담당</th><th>소요</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Kakao 개발자 REST API 키 발급</td><td>Phase 0 시작</td><td>대표님</td><td>30분</td></tr>
+            <tr><td>2</td><td>차량 5종 실제 단가 확정 (45/40/35/25인승+승합차)</td><td>Phase 0 시작</td><td>기획팀</td><td>1일</td></tr>
+            <tr><td>3</td><td>가이드 6언어 실제 단가 확정</td><td>Phase 0 시작</td><td>기획팀</td><td>1일</td></tr>
+            <tr><td>4</td><td>기본 마진/VAT 확정 (제안: 12% / 35% / 10%)</td><td>Phase 0 시작</td><td>대표님</td><td>30분</td></tr>
+            <tr><td>5</td><td>Supabase 프로젝트 생성</td><td>Phase 1 진입 전</td><td>대표님</td><td>30분</td></tr>
+            <tr><td>6</td><td><strong>도메인 별도 구매</strong> (.com / .co.kr)</td><td>Phase 1 진입 전</td><td>대표님</td><td>30분 · 연 약 2만원</td></tr>
+            <tr><td>7</td><td>브랜딩 확정 (서비스명·로고·색상 토큰)</td><td>Phase 1 진입 전</td><td>디자인/대표님</td><td>1주</td></tr>
+            <tr><td>8</td><td>ToS·개인정보처리방침 작성 (광고 심사용)</td><td>Phase 2 진입 전</td><td>법무</td><td>3일</td></tr>
+            <tr><td>9</td><td>Google AdSense 심사 신청</td><td><strong>Phase 2 진입 전</strong></td><td>대표님</td><td>승인 최대 2주</td></tr>
+            <tr><td>10</td><td>토스페이먼츠 가맹 심사</td><td>MAU 5,000 검증 후</td><td>대표님</td><td>승인 최대 2주</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>서비스명·도메인 후보 (별도 구매 · 투어플랜 계열)</h3>
+      <p style="margin-bottom:8px">대표님 의향: <strong>"투어플랜" 또는 비슷한 이름</strong>으로 독립 도메인 1개 구매. 연 약 20,000원 (.com) ~ 30,000원 (.co.kr). 무료 공개 서비스의 브랜드 자산.</p>
+      <p>
+        <span class="tag tag-gold">tourplan.co.kr</span>
+        <span class="tag tag-gold">tourplan.kr</span>
+        <span class="tag tag-gold">tour-plan.co.kr</span>
+        <span class="tag tag-gold">tourplanner.kr</span>
+        <span class="tag tag-gold">mytourplan.com</span>
+        <span class="tag tag-teal">tourplans.kr</span>
+        <span class="tag tag-teal">tourplanhub.com</span>
+      </p>
+      <p style="font-size:13px;color:var(--ink-500);margin-top:12px"><em>※ tourplan.com은 호주의 대형 기업이 선점. .co.kr·.kr·변형형으로 방향 조정 권장. 상표권 조회 필수 (kipris.or.kr).</em></p>
+    </section>
+
+    <!-- ========== 16 리스크 ========== -->
+    <section id="s16">
+      <div class="sec-head">
+        <span class="sec-num">16</span>
+        <div>
+          <span class="sec-kicker">Risks</span>
+          <div class="sec-title">리스크 &amp; 대응 방안</div>
+        </div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table class="risk-table">
+          <thead><tr><th>리스크</th><th>영향</th><th>대응</th></tr></thead>
+          <tbody>
+            <tr><td>카카오 API 한도 초과</td><td>지도·길찾기 장애. 월 30만 호출 초과 시 유료 전환.</td><td>1) 로컬 캐시 적극 활용 (동일 장소 재검색 생략). 2) 호출 빈도 모니터링. 3) Phase 2에서 Naver Map 이중화 검토.</td></tr>
+            <tr><td>AdSense 심사 거부</td><td>Phase 2 광고 수익원 지연.</td><td>1) Phase 1 동안 공개 패키지·SEO 허브로 콘텐츠 풍부화. 2) 심사 전 개인정보처리방침·ToS 완비. 3) 거부 시 Kakao AdFit 대체.</td></tr>
+            <tr><td>도메인 구매 실수</td><td>브랜드 충돌·검색 노출 저하.</td><td>1) 타이핑 쉽고 짧은 도메인 우선. 2) .com 우선, .co.kr은 국내 전용일 때. 3) 상표권 조회 필수 (kipris.or.kr).</td></tr>
+            <tr><td>국내 경쟁자 선점 (큐잉 등)</td><td>SEO·사용자 획득 지연.</td><td>1) 한국 인바운드 특수성 집중 (카카오·원화·VAT·6개 언어 가이드). 2) B2B 공급가 2-트랙은 경쟁자 미구현. 3) 무료+PWA로 차별화.</td></tr>
+            <tr><td>글로벌 SaaS 한국 진출</td><td>Bókun·Rezdy가 한국 지원 강화 가능성.</td><td>1) 월 $99+수수료 가격 구조는 한국 영세 여행사 진입 어려움. 2) 한국 지도(카카오) 연동·한글 SEO는 글로벌 SaaS가 빠르게 못 따라옴. 3) 무료 정책 유지.</td></tr>
+            <tr><td>경쟁 서비스 후발 진입</td><td>차별화 약화.</td><td>1) Phase 2까지 기능 완성도 빠르게 확보. 2) 한국 인바운드 특화로 해외 서비스 진입 장벽 유지. 3) 워터트리 B2B 네트워크·상품 광고 연계가 경쟁 불가 요소.</td></tr>
+            <tr><td>유료 전환율 저조 (&lt;1%)</td><td>MRR 목표 미달.</td><td>1) 무료/프리미엄 경계선 재조정. 2) 팀 공유·브랜드 PDF는 유료 전용. 3) 고객 인터뷰로 실제 결제 의지 검증.</td></tr>
+            <tr><td>워터트리 내부 단가 유출</td><td>경쟁력 손실.</td><td>1) Phase 0은 localStorage만 (서버 전송 없음). 2) Phase 1+ 사내 Enterprise 모드 분리 → 자체 단가는 공개 피드 완전 제외. 3) 직원 NDA.</td></tr>
+            <tr><td>VAT·세무 복잡성</td><td>B2B/B2C 혼용 시 계산 오류 가능성.</td><td>1) 최초 세무사 자문. 2) VAT는 국가별 옵션화 (Phase 2+ 글로벌 대응). 3) "참고용 계산"임을 명시 (세금계산서 대체 아님).</td></tr>
+            <tr><td>오프라인 계산 정확도</td><td>PWA 오프라인 상태에서 환율 미갱신.</td><td>1) 마지막 환율 fetchedAt 표시. 2) 30일 이상 미갱신 시 경고. 3) "환율 오프라인" 모드 명시.</td></tr>
+            <tr><td>AI 개발 의존 리스크</td><td>Claude·Anthropic 장애 시 유지보수 중단.</td><td>1) 전체 코드를 대표님이 읽을 수 있는 수준으로 유지. 2) 외주 개발자 수주 가능한 표준 스택(Next.js+Supabase). 3) 문서화(CLAUDE.md) 철저.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== 17 KPI ========== -->
+    <section id="s17">
+      <div class="sec-head">
+        <span class="sec-num">17</span>
+        <div>
+          <span class="sec-kicker">KPI &amp; Success Metrics</span>
+          <div class="sec-title">성공 지표 (KPI)</div>
+        </div>
+      </div>
+
+      <h3>Phase 0 (내부 MVP) 성공 기준</h3>
+      <div class="kpi-grid">
+        <div class="kpi kpi-teal"><div class="kpi-label">견적 처리 시간</div><div class="kpi-value">5분</div><div class="kpi-sub">65분 → 5분 (92% 절감)</div></div>
+        <div class="kpi"><div class="kpi-label">내부 만족도</div><div class="kpi-value">8/10</div><div class="kpi-sub">기획팀 3명 평균</div></div>
+        <div class="kpi"><div class="kpi-label">주간 사용 빈도</div><div class="kpi-value">≥3회</div><div class="kpi-sub">1인당</div></div>
+        <div class="kpi"><div class="kpi-label">계산 오류</div><div class="kpi-value">0건</div><div class="kpi-sub">유닛 테스트 커버리지 100%</div></div>
+      </div>
+
+      <h3>Phase 1 (순수 무료 공개 베타) 성공 기준</h3>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-label">가입자</div><div class="kpi-value">100</div><div class="kpi-sub">Phase 1 종료 시</div></div>
+        <div class="kpi"><div class="kpi-label">생성 패키지</div><div class="kpi-value">500</div><div class="kpi-sub">누적</div></div>
+        <div class="kpi"><div class="kpi-label">DAU</div><div class="kpi-value">20</div><div class="kpi-sub">최근 30일 평균</div></div>
+        <div class="kpi"><div class="kpi-label">수익</div><div class="kpi-value">0원</div><div class="kpi-sub">의도적 무수익 · 성장 집중</div></div>
+      </div>
+
+      <h3>Phase 2 (수익화) 성공 기준</h3>
+      <div class="kpi-grid">
+        <div class="kpi kpi-gold"><div class="kpi-label">MRR (중립)</div><div class="kpi-value">147만원</div><div class="kpi-sub">월 누적</div></div>
+        <div class="kpi"><div class="kpi-label">유료 전환율</div><div class="kpi-value">2%</div><div class="kpi-sub">무료→프리미엄</div></div>
+        <div class="kpi"><div class="kpi-label">이탈률</div><div class="kpi-value">≤10%</div><div class="kpi-sub">월간</div></div>
+        <div class="kpi"><div class="kpi-label">NPS</div><div class="kpi-value">≥50</div><div class="kpi-sub">분기 조사</div></div>
+      </div>
+
+      <h3>Phase 3 (데이터 비즈니스) 성공 기준</h3>
+      <div class="kpi-grid">
+        <div class="kpi kpi-gold"><div class="kpi-label">리포트 계약</div><div class="kpi-value">5건</div><div class="kpi-sub">연간</div></div>
+        <div class="kpi"><div class="kpi-label">연 매출</div><div class="kpi-value">1억원</div><div class="kpi-sub">리포트+구독+광고</div></div>
+        <div class="kpi"><div class="kpi-label">ARPU</div><div class="kpi-value">15,000원</div><div class="kpi-sub">월</div></div>
+        <div class="kpi"><div class="kpi-label">유저 수</div><div class="kpi-value">5,000+</div><div class="kpi-sub">누적</div></div>
+      </div>
+    </section>
+
+    <!-- ========== 18 다음 단계 ========== -->
+    <section id="s18">
+      <div class="sec-head">
+        <span class="sec-num">18</span>
+        <div>
+          <span class="sec-kicker">Next Steps</span>
+          <div class="sec-title">다음 단계</div>
+        </div>
+      </div>
+
+      <h3>Week 0 (이번 주) — 기획 승인 &amp; 착수 준비</h3>
+      <ol>
+        <li>대표님 이 기획서 최종 검토 &amp; 승인</li>
+        <li>차량·가이드 실제 단가 제공 (기획팀)</li>
+        <li>카카오 개발자 키 발급</li>
+        <li><strong>독립 도메인 1개 구매</strong> (.com / .co.kr) — 약 2만원, 브랜드 자산</li>
+        <li>서비스명·로고 1차 확정</li>
+      </ol>
+
+      <h3>Week 1~3 — Phase 0 구현</h3>
+      <ol>
+        <li>koreacasino 템플릿 복사 → 불필요 부분 제거</li>
+        <li>pricing.ts 순수 함수 작성 + 유닛 테스트 100%</li>
+        <li>빌더 화면 (Day·차량·가이드·활동 입력)</li>
+        <li>대시보드 화면 (KPI 카드·매트릭스·슬라이더)</li>
+        <li>카카오 지도 연동 (장소 검색·거리 계산)</li>
+        <li>PDF 3종 + XLSX + 공유 URL + QR</li>
+        <li>PWA 마감 (manifest·sw·아이콘)</li>
+        <li>내부 기획팀 3명 1주일 실사용 → 피드백 반영</li>
+      </ol>
+
+      <h3>Week 4~7 — Phase 1 SaaS 전환 (순수 무료 공개)</h3>
+      <ol>
+        <li>구매한 도메인 Vercel 연결 + DNS 설정</li>
+        <li>Supabase 프로젝트 셋업 (Auth·DB·RLS)</li>
+        <li>로그인·회원가입 플로 (이메일+구글)</li>
+        <li>패키지 클라우드 저장 + `/u/nickname/slug` 라우트</li>
+        <li>CMS 1차 (차량·가이드·사용자 관리)</li>
+        <li>랜딩 페이지 + ko/en/ja 번역</li>
+        <li>100명 초대 베타 — 광고·결제 일체 없음</li>
+      </ol>
+
+      <h3>Week 8~13 — Phase 2 수익화 시작 (광고 1차)</h3>
+      <ol>
+        <li>ToS·개인정보처리방침 공지 (AdSense 심사 요건)</li>
+        <li>Google AdSense 심사 신청 → 승인 수신 후 배치</li>
+        <li>워터트리 상품 광고 슬롯 + CMS 확장</li>
+        <li>선택 공개 피드 + SEO 허브</li>
+        <li>19언어 UI 확장</li>
+        <li>공식 런칭 + 관광협회·블로그 홍보</li>
+        <li>MAU 5,000 도달 시 프리미엄 구독·토스페이먼츠 도입 결정</li>
+      </ol>
+
+      <h3>Week 14~21 — Phase 3 데이터 비즈니스</h3>
+      <ol>
+        <li>집계 리포트 파이프라인 (월간·계절)</li>
+        <li>분석 DB 분리 (PII 완전 제거)</li>
+        <li>관광공사·대형 OTA·지자체 영업</li>
+        <li>연 계약 5건 목표</li>
+      </ol>
+
+      <div class="callout callout-gold" style="margin-top:40px">
+        <div class="callout-title">★ 즉시 실행 가능</div>
+        본 기획서 승인 즉시 <strong>Phase 0 Week 1 착수</strong> 가능. 재사용 자산(koreacasino PWA + hanamud PDF 레이아웃) 덕분에 실제 구현은 신규 코드 최소화.<br>
+        <strong>2026-05-12 (3주 후)</strong>까지 워터트리 내부 기획팀이 실사용 중인 PWA 앱 출시 가능.
+      </div>
+    </section>
+
+    <!-- ========== Footer ========== -->
+    <div class="doc-footer">
+      <div class="doc-footer-grid">
+        <div>
+          <h5>문서 정보</h5>
+          투어 패키지 단가표 PWA<br>
+          통합 기획서 v1.0<br>
+          2026-04-21 작성<br>
+          플랜 파일: polished-scribbling-wren.md
+        </div>
+        <div>
+          <h5>작성 근거</h5>
+          워터트리 내부 원체험 (상품기획 일상)<br>
+          워터트리 B2B·자체 플랫폼 운영 경험<br>
+          koreacasino·hanamud·OTAtour 재사용 자산
+        </div>
+        <div>
+          <h5>재사용 자산 경로</h5>
+          c:/AI/koreacasino/<br>
+          c:/AI/hanamud/hanamud-estimate.html<br>
+          c:/AI/OTAtour/proposal.html
+        </div>
+      </div>
+      <div class="doc-footer-bot">
+        <span>© 2026 WATERTREE. Confidential &amp; Proprietary. · 무료 공개 서비스</span>
+        <span>Generated with Claude Code · AI 비즈니스 아키텍트</span>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// Scroll progress bar
+(function(){
+  const bar = document.getElementById('scrollBar');
+  window.addEventListener('scroll', function(){
+    const h = document.documentElement;
+    const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+    bar.style.width = pct + '%';
+  }, {passive:true});
+})();
+
+// TOC active state
+(function(){
+  const links = document.querySelectorAll('.toc a');
+  const sections = Array.from(links).map(a => document.querySelector(a.getAttribute('href')));
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if(e.isIntersecting){
+        links.forEach(l => l.classList.remove('active'));
+        const link = document.querySelector('.toc a[href="#'+e.target.id+'"]');
+        if(link) link.classList.add('active');
+      }
+    });
+  }, {rootMargin:'-20% 0px -60% 0px'});
+  sections.forEach(s => s && obs.observe(s));
+})();
+</script>
+
+</body>
+</html>

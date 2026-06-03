@@ -1,0 +1,15 @@
+16. [GET] http://localhost:3000/_next/static/webpack/f8b4d6eaa88ef802.webpack.hot-update.json => [200] OK
+22. [GET] http://localhost:3000/_next/static/webpack/327aa758ae938bb2.webpack.hot-update.json => [200] OK
+27. [GET] http://localhost:3000/_next/static/webpack/0215249d1152a27d.webpack.hot-update.json => [200] OK
+30. [GET] http://localhost:3000/_next/static/webpack/98d20029bf3eda33.webpack.hot-update.json => [200] OK
+34. [GET] http://localhost:3000/_next/static/webpack/76d50567e65b04fc.webpack.hot-update.json => [200] OK
+40. [GET] http://localhost:3000/_next/static/webpack/c783c3f0bf81b683.webpack.hot-update.json => [200] OK
+44. [GET] http://localhost:3000/_next/static/webpack/d9ea94521b4f30ac.webpack.hot-update.json => [200] OK
+48. [GET] http://localhost:3000/_next/static/webpack/28f820a32005133c.webpack.hot-update.json => [200] OK
+54. [GET] http://localhost:3000/_next/static/webpack/d619a26383d180df.webpack.hot-update.json => [200] OK
+58. [GET] http://localhost:3000/_next/static/webpack/517c56e3ec5a856a.webpack.hot-update.json => [200] OK
+62. [GET] http://localhost:3000/_next/static/webpack/d599da489b5c090f.webpack.hot-update.json => [200] OK
+64. [GET] http://localhost:3000/_next/static/webpack/de674b69c9c00d69.webpack.hot-update.json => [200] OK
+67. [GET] http://localhost:3000/_next/static/webpack/e990d28957f765fd.webpack.hot-update.json => [200] OK
+
+Note: 54 static requests not shown, run with "static" option to see them.
