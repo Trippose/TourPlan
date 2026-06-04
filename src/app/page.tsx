@@ -155,6 +155,12 @@ interface StopRow {
   stayMin: number;
   // 이전 카드에서 현재 카드로 오는 이동시간 (분) — 사용자 수동 입력 (빈 값 = 자동 추정)
   travelFromPrevMin: number | '';
+  // 이동시간 고정 여부 — true면 카카오 실시간 교통 갱신 대상에서 제외(수동/현재값 유지),
+  // false면 좌표 기반 추정 + 카카오 실시간 갱신 반영.
+  travelLocked: boolean;
+  // 도착시각 고정 (HH:MM) — 값이 있으면 누적 계산을 무시하고 그 시각으로 도착을 못박는다.
+  // 이후 카드는 이 시각(+체류)을 기점으로 누적 재시작. 빈 값이면 자동 누적 계산.
+  arriveFixed: string;
   // 다년도 패키지의 일자 (1=1일차, 2=2일차, ...). 기본 1.
   dayNumber: number;
   tiered: boolean;
@@ -187,6 +193,8 @@ const emptyStop = (t: StopType = 'sight', dayNumber = 1): StopRow => ({
   longitude: '',
   stayMin: 0,
   travelFromPrevMin: '',
+  travelLocked: false,
+  arriveFixed: '',
   dayNumber,
   tiered: false,
   unifiedPrice: 0,
@@ -229,6 +237,8 @@ function sanitizeStop(s: unknown): StopRow {
     longitude: finiteOrEmpty(o.longitude),
     stayMin: finiteNum(o.stayMin),
     travelFromPrevMin: finiteOrEmpty(o.travelFromPrevMin),
+    travelLocked: o.travelLocked === true,
+    arriveFixed: parseHHMM(safeStr(o.arriveFixed, 5)) !== null ? safeStr(o.arriveFixed, 5) : '',
     dayNumber: Math.max(1, finiteNum(o.dayNumber, 1)),
     tiered: o.tiered === true,
     unifiedPrice: finiteNum(o.unifiedPrice),
@@ -271,6 +281,15 @@ const fmtTime = (min: number) => {
   const h = Math.floor(min / 60) % 24;
   const m = Math.floor(min % 60);
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+// "HH:MM" → 하루 기준 분(0~1439). 형식·범위가 유효하지 않으면 null. 도착시각 고정 파싱용.
+const parseHHMM = (s: string): number | null => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s.trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const mi = Number(m[2]);
+  if (h > 23 || mi > 59) return null;
+  return h * 60 + mi;
 };
 // 원형 숫자 ① ~ ㉚ (1~30). 30 초과 시 일반 숫자.
 const CIRCLE_NUMS = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚';
@@ -648,6 +667,7 @@ export default function BuilderPage() {
   const totalDays = useMemo(() => Math.max(1, nights + 1), [nights]);
 
   // 일자별 도착·출발 시각 누적 계산. 일자 바뀔 때 startTime으로 reset, 이동시간 0.
+  // 도착시각 고정(arriveFixed)이 있는 카드는 그 시각으로 못박고, 이후 카드는 거기서 누적 재시작.
   const scheduleTimes = useMemo(() => {
     if (stops.length === 0) return [];
     const [hh, mm] = startTime.split(':').map((s) => Number(s) || 0);
@@ -661,11 +681,14 @@ export default function BuilderPage() {
         cursor = dayStartMin; // 일자가 바뀌면 시각 reset
       }
       const moveMin = dayChanged || i === 0 ? 0 : itinerary.legs[i - 1]?.minutes ?? 0;
-      const arrive = cursor + moveMin;
+      // 도착시각 고정 우선 — 유효한 HH:MM이면 누적값을 무시하고 그 시각으로 도착 확정.
+      const fixedArrive = parseHHMM(s.arriveFixed);
+      const fixed = fixedArrive !== null;
+      const arrive = fixed ? fixedArrive : cursor + moveMin;
       const depart = arrive + (s.stayMin || 0);
       cursor = depart;
       prevDay = curDay;
-      return { arrive, depart, day: curDay };
+      return { arrive, depart, day: curDay, fixed };
     });
   }, [stops, startTime, itinerary]);
 
@@ -866,8 +889,9 @@ export default function BuilderPage() {
     setKakaoLoading(true);
     setKakaoMsg(null);
     try {
-      // 좌표가 있는 인접 leg만 호출 대상
+      // 좌표가 있는 인접 leg만 호출 대상. 단, 고정(travelLocked) 또는 도착시각 고정(arriveFixed) 카드는 제외.
       const targets: { idx: number; payload: { originLat: number; originLng: number; destLat: number; destLng: number } }[] = [];
+      let lockedSkipped = 0;
       for (let i = 1; i < stops.length; i++) {
         const a = stops[i - 1];
         const b = stops[i];
@@ -875,6 +899,11 @@ export default function BuilderPage() {
           typeof a.latitude === 'number' && typeof a.longitude === 'number' &&
           typeof b.latitude === 'number' && typeof b.longitude === 'number'
         ) {
+          // 고정된 이동시간·도착시각은 실시간 교통 갱신에서 보호 (덮어쓰지 않음)
+          if (b.travelLocked || parseHHMM(b.arriveFixed) !== null) {
+            lockedSkipped++;
+            continue;
+          }
           targets.push({
             idx: i,
             payload: {
@@ -887,7 +916,12 @@ export default function BuilderPage() {
         }
       }
       if (targets.length === 0) {
-        setKakaoMsg({ ok: false, text: '좌표가 있는 인접 카드가 없습니다 — 일정에 위도·경도 입력 후 시도' });
+        setKakaoMsg({
+          ok: false,
+          text: lockedSkipped > 0
+            ? `실시간 갱신 대상이 없습니다 — 좌표 있는 카드 ${lockedSkipped}건이 모두 고정 상태입니다 (고정 해제 후 시도)`
+            : '좌표가 있는 인접 카드가 없습니다 — 일정에 위도·경도 입력 후 시도',
+        });
         setKakaoLoading(false);
         return;
       }
@@ -916,7 +950,7 @@ export default function BuilderPage() {
       const s = json.summary ?? { succeeded: 0, failed: 0, total: targets.length };
       setKakaoMsg({
         ok: s.failed === 0,
-        text: `카카오 모빌리티 갱신 완료 — 성공 ${s.succeeded}/${s.total}${s.failed > 0 ? ` (실패 ${s.failed}건, 실패한 leg는 자동 추정값 유지)` : ''}`,
+        text: `카카오 모빌리티 갱신 완료 — 성공 ${s.succeeded}/${s.total}${s.failed > 0 ? ` (실패 ${s.failed}건, 실패한 leg는 자동 추정값 유지)` : ''}${lockedSkipped > 0 ? ` · 고정 ${lockedSkipped}건 제외` : ''}`,
       });
     } catch (e) {
       setKakaoMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
@@ -1841,7 +1875,7 @@ export default function BuilderPage() {
                             <div className="text-sm font-bold" style={{ color: PAL.inkSoft }}>
                               {leg.km !== null ? `${leg.km.toFixed(1)}km` : '좌표'}
                             </div>
-                            {/* 이동시간 수동 입력 (override) — 빈 값이면 자동 추정 사용 */}
+                            {/* 이동시간 수동 입력 (override) — 빈 값이면 자동 추정 사용. 🔒 고정 시 카카오 실시간 갱신 제외 */}
                             <div className="flex items-center gap-0.5">
                               <input
                                 type="number"
@@ -1857,18 +1891,50 @@ export default function BuilderPage() {
                                 }}
                                 className="h-7 w-12 rounded border bg-white text-center text-sm font-bold tabular-nums"
                                 style={{
-                                  borderColor: typeof s.travelFromPrevMin === 'number' ? PAL.rose : PAL.line,
-                                  color: typeof s.travelFromPrevMin === 'number' ? PAL.rose : PAL.inkSoft,
+                                  borderColor: s.travelLocked ? PAL.amber : (typeof s.travelFromPrevMin === 'number' ? PAL.rose : PAL.line),
+                                  color: s.travelLocked ? PAL.amber : (typeof s.travelFromPrevMin === 'number' ? PAL.rose : PAL.inkSoft),
                                 }}
                                 title={typeof s.travelFromPrevMin === 'number'
                                   ? '수동 입력값 (직접 입력) — 비우면 자동 추정으로 복귀'
                                   : `자동 추정값: ${leg.minutes !== null ? Math.round(leg.minutes) + '분' : '좌표 필요'}. 실제 차량 시간을 직접 입력하면 우선 적용`}
                               />
                               <span className="text-xs font-semibold">분</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!s.travelLocked) {
+                                    // 고정 켜기 — 빈 값이면 현재 자동 추정값을 수동값으로 박아 "보이는 값"을 고정
+                                    const patch: Partial<StopRow> = { travelLocked: true };
+                                    if (typeof s.travelFromPrevMin !== 'number' && leg.minutes !== null) {
+                                      patch.travelFromPrevMin = Math.round(leg.minutes);
+                                    }
+                                    patchStop(i, patch);
+                                  } else {
+                                    patchStop(i, { travelLocked: false });
+                                  }
+                                }}
+                                className="ml-0.5 flex h-7 w-7 items-center justify-center rounded border text-xs leading-none"
+                                style={{
+                                  borderColor: s.travelLocked ? PAL.amber : PAL.line,
+                                  backgroundColor: s.travelLocked ? PAL.amberPale : 'white',
+                                  color: s.travelLocked ? PAL.amber : PAL.mute,
+                                }}
+                                title={s.travelLocked
+                                  ? '이동시간 고정됨 — 카카오 실시간 교통 갱신에서 제외. 클릭하면 실시간 반영으로 전환'
+                                  : '실시간 — 카카오 교통 갱신 대상. 클릭하면 현재 값으로 고정'}
+                                aria-label={s.travelLocked ? '이동시간 고정 해제' : '이동시간 고정'}
+                                aria-pressed={s.travelLocked}
+                              >
+                                {s.travelLocked ? '🔒' : '⟳'}
+                              </button>
                             </div>
                             {time && (
-                              <div className="text-sm font-black tabular-nums" style={{ color: PAL.rose }}>
-                                {fmtTime(time.arrive)}
+                              <div
+                                className="text-sm font-black tabular-nums"
+                                style={{ color: time.fixed ? PAL.amber : PAL.rose }}
+                                title={time.fixed ? '도착시각 고정됨 (누적 계산 무시)' : undefined}
+                              >
+                                {time.fixed && '🔒'}{fmtTime(time.arrive)}
                               </div>
                             )}
                           </div>
@@ -2733,7 +2799,7 @@ function StopCard({
   index: number;
   total: number;
   stop: StopRow;
-  schedule: { arrive: number; depart: number } | null;
+  schedule: { arrive: number; depart: number; fixed?: boolean } | null;
   onPatch: (p: Partial<StopRow>) => void;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
@@ -2772,19 +2838,65 @@ function StopCard({
       </div>
 
       {schedule && (
-        <div className="rounded-md text-center text-sm font-black tabular-nums" style={{ color: meta.color, backgroundColor: meta.bg, padding: '6px 8px' }}>
-          {fmtTime(schedule.arrive)} 도착
-          {stop.stayMin > 0 && (
-            <>
-              {' '}→ {fmtTime(schedule.depart)} 출발
-              <span
-                className="ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-black"
-                style={{ backgroundColor: PAL.tealPale, color: PAL.teal }}
+        <div className="flex flex-col gap-1">
+          <div
+            className="rounded-md text-center text-sm font-black tabular-nums"
+            style={{
+              color: schedule.fixed ? PAL.amber : meta.color,
+              backgroundColor: schedule.fixed ? PAL.amberPale : meta.bg,
+              padding: '6px 8px',
+            }}
+          >
+            {schedule.fixed && '🔒 '}{fmtTime(schedule.arrive)} 도착
+            {stop.stayMin > 0 && (
+              <>
+                {' '}→ {fmtTime(schedule.depart)} 출발
+                <span
+                  className="ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-black"
+                  style={{ backgroundColor: PAL.tealPale, color: PAL.teal }}
+                >
+                  ⏱ 체류시간 {stop.stayMin}분
+                </span>
+              </>
+            )}
+          </div>
+          {/* 도착시각 고정 — 값이 있으면 누적 계산을 무시하고 이 시각으로 도착을 못박는다 (공연 시작·식당 예약 등). 이후 카드는 이 시각(+체류)부터 누적 재시작. */}
+          <div className="flex items-center justify-center gap-1 text-[11px]">
+            {stop.arriveFixed ? (
+              <>
+                <span className="font-bold" style={{ color: PAL.amber }}>🔒 도착 고정</span>
+                <input
+                  type="time"
+                  value={stop.arriveFixed}
+                  onChange={(e) => onPatch({ arriveFixed: e.target.value })}
+                  className="h-6 rounded border px-1 text-[11px] font-bold tabular-nums"
+                  style={{ borderColor: PAL.amber, color: PAL.amber }}
+                  aria-label="고정 도착시각"
+                  title="이 시각으로 도착을 고정합니다. 이후 카드는 이 시각(+체류)부터 누적 재계산됩니다."
+                />
+                <button
+                  type="button"
+                  onClick={() => onPatch({ arriveFixed: '' })}
+                  className="rounded border px-1.5 py-0.5 font-bold"
+                  style={{ borderColor: PAL.line, color: PAL.mute }}
+                  title="도착시각 고정 해제 — 자동 누적 계산으로 복귀"
+                >
+                  해제
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onPatch({ arriveFixed: fmtTime(schedule.arrive % 1440) })}
+                className="rounded border px-1.5 py-0.5 font-semibold"
+                style={{ borderColor: PAL.line, color: PAL.mute }}
+                title="현재 도착시각을 고정값으로 못박습니다 (공연 시작·식당 예약 등 시간 제약). 이후 카드는 이 시각부터 누적 재계산됩니다."
+                aria-label="도착시각 고정"
               >
-                ⏱ 체류시간 {stop.stayMin}분
-              </span>
-            </>
-          )}
+                🕐 도착시각 고정
+              </button>
+            )}
+          </div>
         </div>
       )}
 
