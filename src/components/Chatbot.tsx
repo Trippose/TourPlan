@@ -438,49 +438,16 @@ export function Chatbot({ context, openSignal }: Props) {
               </h2>
               <div className="flex items-center gap-1">
                 {messages.length > 0 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // 대화 export — JSON 파일 다운로드 (개인 백업·내보내기)
-                        const data = {
-                          exportedAt: new Date().toISOString(),
-                          count: messages.length,
-                          messages: messages.map((m) => ({
-                            role: m.role,
-                            content: m.content,
-                            ts: m.meta?.ts,
-                            mode: m.meta?.mode,
-                            provider: m.meta?.provider,
-                          })),
-                        };
-                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-                        a.download = `chat-history-${stamp}.json`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                      }}
-                      className="rounded-lg border px-2 py-1 text-[11px] font-bold transition hover:scale-105"
-                      style={{ borderColor: 'var(--border, #E7E2D5)', color: '#138060' }}
-                      aria-label={`대화 ${messages.length}건 JSON으로 내보내기`}
-                      title="대화 전체를 JSON 파일로 다운로드"
-                    >
-                      ⬇ Export ({messages.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={reset}
-                      className="rounded-lg border px-2 py-1 text-[11px] font-bold transition hover:scale-105"
-                      style={{ borderColor: 'var(--border, #E7E2D5)', color: '#4B5563' }}
-                      aria-label="대화 초기화"
-                      title="새 대화 시작 (localStorage + IndexedDB 모두 비움)"
-                    >
-                      ↻ 새 대화
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={reset}
+                    className="rounded-lg border px-2 py-1 text-[11px] font-bold transition hover:scale-105"
+                    style={{ borderColor: 'var(--border, #E7E2D5)', color: '#4B5563' }}
+                    aria-label="대화 초기화"
+                    title="새 대화 시작 (localStorage + IndexedDB 모두 비움)"
+                  >
+                    ↻ 새 대화
+                  </button>
                 )}
                 <button
                   type="button"
