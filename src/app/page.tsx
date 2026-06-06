@@ -367,8 +367,8 @@ export default function BuilderPage() {
             const origin = window.location.origin;
             clonedDoc.querySelectorAll('img').forEach((img) => {
               const s = img.getAttribute('src') || '';
+              // 카카오 타일을 same-origin 프록시로 교체(프록시 응답은 same-origin이라 crossorigin 불필요)
               if (/(?:daumcdn\.net|kakao\.com)/.test(s) && !s.startsWith(origin)) {
-                img.setAttribute('crossorigin', 'anonymous');
                 img.setAttribute('src', `${origin}/api/img-proxy?url=${encodeURIComponent(s)}`);
               }
             });
