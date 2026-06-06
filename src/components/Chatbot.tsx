@@ -4,6 +4,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { chatDbSave, chatDbLoadAll, chatDbClear, type StoredMessage } from '@/lib/chat-db';
 
 interface Message {
@@ -386,7 +387,9 @@ export function Chatbot({ context, openSignal }: Props) {
         <span className="hidden sm:inline">도우미</span>
       </button>
 
-      {open && (
+      {open && createPortal(
+        // 패널을 document.body로 포털 — 헤더(backdrop-blur=filter)가 fixed의 containing block이
+        // 되어 패널이 헤더 높이(약 90px) 안에 갇혀 상단이 잘리던 문제를 해결한다(viewport 기준 고정).
         <div
           role="dialog"
           aria-modal="true"
@@ -599,7 +602,8 @@ export function Chatbot({ context, openSignal }: Props) {
               </p>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
