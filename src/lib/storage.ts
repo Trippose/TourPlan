@@ -91,6 +91,24 @@ export interface LibraryItem {
   savedAt: string; // ISO timestamp
   summary: LibrarySummary;
   data: unknown; // 견적 payload 전체
+  // 4자리 PIN의 SHA-256(`id:pin`) 해시. 있으면 삭제 시 PIN 일치를 요구한다(평문 미저장).
+  // id를 salt로 써 항목별로 다른 해시가 되게 한다. 없으면 PIN 미설정(하위호환).
+  pinHash?: string;
+}
+
+// 4자리 PIN 등 짧은 문자열의 SHA-256 hex (Web Crypto). 평문 PIN을 저장하지 않기 위함.
+export async function sha256Hex(text: string): Promise<string> {
+  const enc = new TextEncoder();
+  const buf = await crypto.subtle.digest("SHA-256", enc.encode(text));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+// 보관함 항목의 PIN 검증. pinHash 없는 항목(하위호환)은 항상 통과.
+export async function verifyLibraryPin(item: LibraryItem, pin: string): Promise<boolean> {
+  if (!item.pinHash) return true;
+  return (await sha256Hex(`${item.id}:${pin}`)) === item.pinHash;
 }
 
 // 저장된 data(payload)에서 목록 표시용 요약 추출 — page.tsx의 partyTotal 계산과 동일 규칙.
@@ -150,16 +168,25 @@ function newId(): string {
   return `q-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 }
 
-// 현재 견적을 이름 붙여 저장. 동일 id면 덮어쓰기, 신규면 맨 앞에 추가. 상한 초과 시 false.
-export function saveToLibrary(name: string, data: unknown, id?: string): LibraryItem | null {
+// 현재 견적을 이름 붙여 저장. 신규면 맨 앞에 추가. 상한 초과 시 null.
+// pin(4자리)이 있으면 SHA-256(id:pin)으로 해시해 저장 — 이후 삭제 시 PIN 일치를 요구한다.
+export async function saveToLibrary(
+  name: string,
+  data: unknown,
+  pin?: string,
+  id?: string,
+): Promise<LibraryItem | null> {
   if (typeof window === "undefined") return null;
   const items = loadLibrary();
+  const itemId = id ?? newId();
+  const pinHash = pin ? await sha256Hex(`${itemId}:${pin}`) : undefined;
   const item: LibraryItem = {
-    id: id ?? newId(),
-    name: name.trim() || "이름 없는 견적",
+    id: itemId,
+    name: name.trim() || "이름 없는 상품",
     savedAt: new Date().toISOString(),
     summary: summaryFromData(data),
     data,
+    pinHash,
   };
   const idx = items.findIndex((i) => i.id === item.id);
   if (idx >= 0) {

@@ -10,7 +10,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
   AUTH_COOKIE,
-  AUTH_TTL_MS,
   comparePasswords,
   readAuthConfig,
   signAuthToken,
@@ -93,7 +92,8 @@ export async function POST(req: NextRequest) {
   const ok = comparePasswords(body.pw1, body.pw2, cfg.pw1, cfg.pw2);
   if (!ok) return delayedFail();
 
-  // 서명 토큰 발급 + 쿠키 설정
+  // 서명 토큰 발급 + 세션 쿠키 설정 (maxAge 미설정 = 세션 쿠키 → 브라우저 종료 시 삭제).
+  // 토큰 자체의 만료(AUTH_TTL_MS=1시간)가 유휴 로그아웃을 강제하고, 활동 중엔 클라이언트가 슬라이딩 갱신한다.
   const token = await signAuthToken(cfg.secret);
   const res = NextResponse.json({ success: true, mode: 'authenticated' });
   res.cookies.set(AUTH_COOKIE, token, {
@@ -101,7 +101,6 @@ export async function POST(req: NextRequest) {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: Math.floor(AUTH_TTL_MS / 1000),
   });
   return res;
 }

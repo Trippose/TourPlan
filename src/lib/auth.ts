@@ -11,7 +11,9 @@
 //   3. signature 재계산 후 timing-safe 비교 (위변조 방지)
 
 export const AUTH_COOKIE = 'tour-pricing-auth';
-export const AUTH_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
+// 유휴 1시간 자동 로그아웃 — 토큰 수명을 1시간으로 두고, 활동 중이면 클라이언트가 슬라이딩 갱신한다.
+// 1시간 무활동이면 토큰이 만료돼 다음 요청에서 /login으로 보내진다. 쿠키는 세션 쿠키(브라우저 종료 시 삭제).
+export const AUTH_TTL_MS = 60 * 60 * 1000; // 1시간
 
 // Web Crypto 기반 HMAC-SHA256 — Edge runtime · Node 양쪽 모두 동작
 async function hmac(secret: string, data: string): Promise<string> {

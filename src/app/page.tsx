@@ -36,6 +36,7 @@ const CampaignSimulator = dynamic(
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 import { WelcomeGuide } from '@/components/WelcomeGuide';
 import { Chatbot } from '@/components/Chatbot';
+import { AuthKeepAlive } from '@/components/AuthKeepAlive';
 import { ShareModal } from '@/components/ShareModal';
 import { LibraryModal } from '@/components/LibraryModal';
 import { HeaderMenu } from '@/components/HeaderMenu';
@@ -51,7 +52,7 @@ import type {
 import { computeItinerary, formatMin } from '@/lib/itinerary';
 import {
   loadState, saveState, clearState, debounce,
-  loadLibrary, saveToLibrary, deleteFromLibrary, migrateSlotsToLibrary, LIBRARY_MAX,
+  loadLibrary, saveToLibrary, deleteFromLibrary, verifyLibraryPin, migrateSlotsToLibrary, LIBRARY_MAX,
   type LibraryItem,
 } from '@/lib/storage';
 
@@ -474,7 +475,7 @@ export default function BuilderPage() {
     const n = migrateSlotsToLibrary();
     if (n > 0) {
       setLibraryItems(loadLibrary());
-      setStorageMsg(`✓ 이전 슬롯 ${n}건을 보관함으로 옮겼습니다 (헤더 ⋯ 메뉴 → 견적 보관함)`);
+      setStorageMsg(`✓ 이전 슬롯 ${n}건을 보관함으로 옮겼습니다 (헤더 ⋯ 메뉴 → 투어패키지 상품 보관함)`);
       const t = setTimeout(() => setStorageMsg(null), 4000);
       return () => clearTimeout(t);
     }
@@ -586,14 +587,19 @@ export default function BuilderPage() {
     setChannels(Array.isArray(d.channels) && d.channels.length > 0 ? d.channels.map(sanitizeChannel) : DEFAULT_CHANNEL_STATE);
   };
 
-  // 보관함 — 현재 견적을 이름 붙여 저장
-  const handleSaveToLibrary = (name: string) => {
-    const saved = saveToLibrary(name, buildPayload());
+  // 보관함 — 현재 견적을 이름 + 4자리 PIN 붙여 저장 (PIN은 삭제 보호용)
+  const handleSaveToLibrary = async (name: string, pin: string) => {
+    if (!/^\d{4}$/.test(pin)) {
+      setStorageMsg('⚠ 비밀번호는 숫자 4자리로 설정하세요');
+      setTimeout(() => setStorageMsg(null), 3000);
+      return;
+    }
+    const saved = await saveToLibrary(name, buildPayload(), pin);
     if (saved) {
       setLibraryItems(loadLibrary());
-      setStorageMsg(`✓ "${saved.name}" 보관함에 저장됨`);
+      setStorageMsg(`✓ "${saved.name}" 상품 보관함에 저장됨 (삭제 시 비밀번호 필요)`);
     } else {
-      setStorageMsg(`⚠ 저장 실패 — 보관함이 가득 찼습니다 (최대 ${LIBRARY_MAX}건). 불필요한 견적을 삭제하세요.`);
+      setStorageMsg(`⚠ 저장 실패 — 상품 보관함이 가득 찼습니다 (최대 ${LIBRARY_MAX}건). 불필요한 상품을 삭제하세요.`);
     }
     setTimeout(() => setStorageMsg(null), 3000);
   };
@@ -607,8 +613,14 @@ export default function BuilderPage() {
     setTimeout(() => setStorageMsg(null), 3000);
   };
 
-  // 보관함 — 삭제
-  const handleDeleteFromLibrary = (id: string) => {
+  // 보관함 — 삭제 (PIN 설정된 항목은 4자리 비밀번호 일치 시에만 삭제)
+  const handleDeleteFromLibrary = async (id: string, pin: string) => {
+    const item = libraryItems.find((i) => i.id === id);
+    if (item && !(await verifyLibraryPin(item, pin))) {
+      setStorageMsg('⚠ 비밀번호가 일치하지 않습니다 — 삭제할 수 없습니다');
+      setTimeout(() => setStorageMsg(null), 3000);
+      return;
+    }
     deleteFromLibrary(id);
     setLibraryItems(loadLibrary());
   };
@@ -1046,11 +1058,13 @@ export default function BuilderPage() {
               onClick={openLibrary}
               className="hidden md:inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border bg-white px-2.5 text-xs font-bold no-print"
               style={{ borderColor: PAL.line, color: PAL.violet }}
-              title="견적 보관함 — 이름 붙여 저장하고 목록에서 불러오기"
-              aria-label="견적 보관함 열기"
+              title="투어패키지 상품 보관함 — 이름 붙여 저장하고 목록에서 불러오기"
+              aria-label="투어패키지 상품 보관함 열기"
             >
-              📚 보관함
+              📚 상품 보관함
             </button>
+            {/* 유휴 1시간·창 닫음 자동 로그아웃 + 슬라이딩 세션 (렌더 없음) */}
+            <AuthKeepAlive />
             {/* AI 도우미 — 항상 표시 (자주 사용) */}
             <Chatbot
               openSignal={chatbotSignal}
@@ -1098,7 +1112,7 @@ export default function BuilderPage() {
                 },
                 {
                   id: 'library',
-                  label: '견적 보관함',
+                  label: '투어패키지 상품 보관함',
                   icon: '📚',
                   color: PAL.violet,
                   emphasized: true,
