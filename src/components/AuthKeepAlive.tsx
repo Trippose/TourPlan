@@ -6,7 +6,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { SESSION_FLAG } from '@/lib/storage';
 
 const IDLE_LIMIT_MS = 60 * 60 * 1000; // 1시간 무활동 → 로그아웃
 const REFRESH_EVERY_MS = 10 * 60 * 1000; // 활동 중 10분마다 토큰 갱신
@@ -17,17 +16,8 @@ export function AuthKeepAlive() {
   const lastRefresh = useRef(Date.now());
 
   useEffect(() => {
-    // 새 브라우저 세션 감지 — sessionStorage 마커가 없으면 "창 닫고 다시 열기/새 탭"으로 보고
-    // 즉시 로그아웃한다(쿠키가 세션 복원·기존 영구 쿠키로 남아 있어도 차단). 같은 탭 새로고침은
-    // sessionStorage가 유지되므로 통과한다.
-    if (typeof window !== 'undefined' && !sessionStorage.getItem(SESSION_FLAG)) {
-      (async () => {
-        try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* 무시 */ }
-        window.location.href = '/login';
-      })();
-      return;
-    }
-
+    // 세션 마커 검사는 빌더(page.tsx)의 early return 게이트가 담당한다. 여기서는 유휴 타임아웃과
+    // 슬라이딩 갱신만 처리한다(마커가 있어야 빌더가 렌더되고 이 컴포넌트가 마운트되므로).
     const onActivity = () => {
       lastActivity.current = Date.now();
     };

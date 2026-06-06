@@ -51,7 +51,7 @@ import type {
 } from '@/lib/pricing';
 import { computeItinerary, formatMin } from '@/lib/itinerary';
 import {
-  loadState, saveState, clearState, debounce,
+  loadState, saveState, clearState, debounce, SESSION_FLAG,
   loadLibrary, saveToLibrary, deleteFromLibrary, verifyLibraryPin, migrateSlotsToLibrary, LIBRARY_MAX,
   type LibraryItem,
 } from '@/lib/storage';
@@ -334,6 +334,9 @@ export default function BuilderPage() {
   // localStorage 자동 저장·복원 상태
   const [storageMsg, setStorageMsg] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  // 브라우저 세션 확인 — sessionStorage 마커가 있어야 빌더를 그린다(창 닫고 다시 열기 시
+  // 이전 사용자 견적이 한 프레임 노출되는 것을 막는다). 마커 없으면 로그아웃 후 /login.
+  const [sessionChecked, setSessionChecked] = useState(false);
   // 자동 저장 상태 — 'idle' | 'dirty' | 'saved' (헤더 배지 표시용)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'dirty' | 'saved'>('idle');
   // 챗봇 글로벌 토글 신호 (Ctrl+K 단축키에서 사용)
@@ -384,6 +387,19 @@ export default function BuilderPage() {
       }
     }
     window.print();
+  }, []);
+
+  // 세션 마커 검사 — 빌더를 그리기 전에 실행. 마커가 없으면(창 닫고 다시 열기/새 탭 = 새 브라우저
+  // 세션) 로그아웃 후 /login. 마커가 있으면(같은 탭 새로고침 등) 빌더를 그린다.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem(SESSION_FLAG)) {
+      setSessionChecked(true);
+    } else {
+      fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
+        window.location.replace('/login');
+      });
+    }
   }, []);
 
   // URL fragment(#q=...) 복원 — 공유 링크 진입 시 우선 적용 (localStorage보다 우선)
@@ -1015,6 +1031,15 @@ export default function BuilderPage() {
     }
     setKakaoLoading(false);
   };
+
+  // 세션 마커 확인 전에는 빌더를 렌더하지 않는다 — 창 닫고 다시 열 때 이전 견적이 노출되는 것 방지.
+  if (!sessionChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white text-sm" style={{ color: '#52606D' }}>
+        불러오는 중…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: PAL.bg, color: PAL.ink }}>
