@@ -4,7 +4,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { chatDbSave, chatDbLoadAll, chatDbClear, type StoredMessage } from '@/lib/chat-db';
 
 interface Message {
@@ -136,6 +135,7 @@ export function Chatbot({ context, openSignal }: Props) {
   const [mode, setMode] = useState<'ai' | 'rule-fallback' | 'unknown'>('unknown');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null); // 드롭다운 컨테이너 — 외부 클릭 감지용
 
   // 마운트 시 영속 복원 — IndexedDB 우선, 실패 시 localStorage 폴백
   useEffect(() => {
@@ -373,36 +373,45 @@ export function Chatbot({ context, openSignal }: Props) {
     setMode('unknown');
   };
 
+  // 드롭다운 — 바깥 클릭 또는 ESC 시 닫기 (토글 버튼 클릭은 컨테이너 내부라 닫히지 않음)
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [open]);
+
   return (
-    <>
+    <div ref={dropdownRef} className="relative inline-block">
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center justify-center gap-1 rounded-lg border bg-white px-2 text-xs font-bold transition hover:scale-105 dark:bg-neutral-800 dark:text-neutral-100"
         style={{ borderColor: 'var(--border, #E7E2D5)', minWidth: 36, minHeight: 36, color: '#6E37CC' }}
         aria-label="AI 도우미 열기"
+        aria-expanded={open}
         title="AI 투어 단가 도우미 — Claude Opus 4.8 기반 (Anthropic, 워터트리 정책상 0.1% 품질 우선)"
       >
         <span aria-hidden>🤖</span>
         <span className="hidden sm:inline">도우미</span>
       </button>
 
-      {open && createPortal(
-        // 패널을 document.body로 포털 — 헤더(backdrop-blur=filter)가 fixed의 containing block이
-        // 되어 패널이 헤더 높이(약 90px) 안에 갇혀 상단이 잘리던 문제를 해결한다(viewport 기준 고정).
+      {open && (
+        // 도우미 버튼 아래(헤더 하단) 우측에 펼치는 드롭다운. fixed=viewport 기준이라 좌우/상단
+        // 잘림이 없다(헤더 backdrop-blur 제거로 가능). 화면 높이를 넘으면 내부(메시지)만 스크롤.
         <div
           role="dialog"
-          aria-modal="true"
           aria-label="AI 투어 단가 도우미"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-end sm:justify-end sm:p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setOpen(false);
-          }}
+          className="fixed inset-x-2 top-14 z-50 flex max-h-[calc(100dvh-5rem)] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 sm:inset-x-auto sm:right-4 sm:top-18 sm:w-[400px]"
+          style={{ border: '1px solid var(--border, #E7E2D5)' }}
         >
-          <div
-            className="flex max-h-[90dvh] w-full max-w-md flex-col rounded-t-2xl bg-white shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 sm:max-h-[80dvh] sm:rounded-2xl"
-            style={{ border: '1px solid var(--border, #E7E2D5)' }}
-          >
             <header
               className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3"
               style={{ borderColor: 'var(--border, #E7E2D5)' }}
@@ -601,10 +610,8 @@ export function Chatbot({ context, openSignal }: Props) {
                 분당 20회 제한 · 입력 컨텍스트는 답변 정확도를 위해 자동 첨부됩니다 · 메시지는 서버에 저장되지 않음
               </p>
             </form>
-          </div>
-        </div>,
-        document.body,
+        </div>
       )}
-    </>
+    </div>
   );
 }

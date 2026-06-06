@@ -1070,7 +1070,9 @@ export default function BuilderPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: PAL.bg, color: PAL.ink }}>
-      <header className="sticky top-0 z-10 border-b backdrop-blur" style={{ borderColor: PAL.line, backgroundColor: 'rgba(255,255,255,0.85)' }}>
+      {/* backdrop-blur 제거 — filter가 자식 fixed 요소(도우미 패널)의 기준(containing block)을
+          헤더로 가둬 위치가 깨졌다. 배경은 반투명(rgba 0.95)로 유지해 가독성 확보. */}
+      <header className="sticky top-0 z-10 border-b" style={{ borderColor: PAL.line, backgroundColor: 'rgba(255,255,255,0.95)' }}>
         <div className="mx-auto flex max-w-[1920px] items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-4 sm:py-3 lg:px-6">
           <div className="min-w-0 flex-1">
             <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider" style={{ backgroundColor: PAL.emeraldPale, color: PAL.emerald }}>
