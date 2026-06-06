@@ -21,7 +21,7 @@ interface Props {
   items: LibraryItem[];
   currentName: string; // 저장 input 기본값 (현재 패키지명)
   onSave: (name: string, pin: string) => void;
-  onLoad: (item: LibraryItem) => void;
+  onLoad: (item: LibraryItem, pin: string) => void;
   onDelete: (id: string, pin: string) => void;
   onNew: () => void; // 새 견적 — 폼을 빈 양식으로 초기화
 }
@@ -41,6 +41,8 @@ export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad
   const [pin, setPin] = useState(''); // 저장용 4자리 비밀번호
   const [deletingId, setDeletingId] = useState<string | null>(null); // 삭제 PIN 입력 중인 항목
   const [deletePin, setDeletePin] = useState('');
+  const [loadingId, setLoadingId] = useState<string | null>(null); // 불러오기 PIN 입력 중인 항목
+  const [loadPin, setLoadPin] = useState('');
 
   // 열릴 때마다 현재 패키지명을 기본 저장 이름으로 채우고 입력 상태 초기화
   useEffect(() => {
@@ -49,6 +51,8 @@ export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad
       setPin('');
       setDeletingId(null);
       setDeletePin('');
+      setLoadingId(null);
+      setLoadPin('');
     }
   }, [open, currentName]);
 
@@ -216,13 +220,50 @@ export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad
                             취소
                           </button>
                         </>
+                      ) : loadingId === it.id ? (
+                        <>
+                          <input
+                            type="password"
+                            inputMode="numeric"
+                            autoComplete="off"
+                            autoFocus
+                            value={loadPin}
+                            onChange={(e) => setLoadPin(onlyDigits4(e.target.value))}
+                            maxLength={4}
+                            placeholder="비번"
+                            aria-label={`${it.name} 불러오기 비밀번호`}
+                            className="w-16 rounded-lg border px-1.5 py-1 text-center text-xs tabular-nums"
+                            style={{ borderColor: PAL.teal, color: PAL.ink }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') { e.preventDefault(); onLoad(it, loadPin); setLoadingId(null); setLoadPin(''); }
+                              if (e.key === 'Escape') { setLoadingId(null); setLoadPin(''); }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => { onLoad(it, loadPin); setLoadingId(null); setLoadPin(''); }}
+                            className="rounded-lg px-2 py-1 text-xs font-bold text-white"
+                            style={{ backgroundColor: PAL.teal }}
+                          >
+                            불러오기
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setLoadingId(null); setLoadPin(''); }}
+                            className="rounded-lg border px-2 py-1 text-xs font-bold"
+                            style={{ borderColor: PAL.line, color: PAL.mute }}
+                          >
+                            취소
+                          </button>
+                        </>
                       ) : (
                         <>
                           <button
                             type="button"
-                            onClick={() => onLoad(it)}
+                            onClick={() => { setLoadingId(it.id); setLoadPin(''); }}
                             className="rounded-lg px-2.5 py-1 text-xs font-bold text-white"
                             style={{ backgroundColor: PAL.teal }}
+                            title={it.pinHash ? '불러오려면 비밀번호 입력' : '불러오기'}
                           >
                             불러오기
                           </button>

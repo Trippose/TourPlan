@@ -604,12 +604,16 @@ export default function BuilderPage() {
     setTimeout(() => setStorageMsg(null), 3000);
   };
 
-  // 보관함 — 불러오기 (현재 작업 덮어쓰기, confirm)
-  const handleLoadFromLibrary = (item: LibraryItem) => {
-    if (typeof window !== 'undefined' && !window.confirm(`"${item.name}"을(를) 불러오면 현재 작업이 덮어쓰여집니다. 계속할까요?`)) return;
+  // 보관함 — 불러오기 (PIN 설정 항목은 비밀번호 일치 시에만 불러옴. 현재 작업은 덮어쓰여진다)
+  const handleLoadFromLibrary = async (item: LibraryItem, pin: string) => {
+    if (!(await verifyLibraryPin(item, pin))) {
+      setStorageMsg('⚠ 비밀번호가 일치하지 않습니다 — 불러올 수 없습니다');
+      setTimeout(() => setStorageMsg(null), 3000);
+      return;
+    }
     applyPayload((item.data ?? {}) as Record<string, unknown>);
     setShowLibraryModal(false);
-    setStorageMsg(`✓ "${item.name}" 불러옴`);
+    setStorageMsg(`✓ "${item.name}" 불러옴 (현재 작업을 대체함)`);
     setTimeout(() => setStorageMsg(null), 3000);
   };
 
