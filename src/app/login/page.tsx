@@ -9,7 +9,7 @@ import { useEffect, useState, FormEvent } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { ArithPlaceholder, type ArithValue } from './ArithChallenge';
-import { clearState } from '@/lib/storage';
+import { clearState, SESSION_FLAG } from '@/lib/storage';
 
 // 산술 4지선다는 SSR 비활성 — 첫 페인트부터 placeholder만, CSR 마운트 시 실제 위젯 렌더
 // → SSR/CSR 모두 동일 높이 160px 박스 → layout shift 0, "있고 없고 겹침" 깜빡임 제거
@@ -83,6 +83,8 @@ export default function LoginPage() {
         // 로그인 성공 — 이전 작업본(현재 작업)을 비워 메인 첫 화면을 빈 양식으로 시작.
         // 보관함(저장된 견적)은 보존. 작업 중 새로고침은 쿠키가 유효해 로그인을 거치지 않으므로 복원이 유지된다.
         clearState();
+        // 브라우저 세션 마커 설정 — 이 탭/창을 닫으면 자동 삭제돼 재방문 시 로그아웃된다.
+        try { sessionStorage.setItem(SESSION_FLAG, '1'); } catch { /* 무시 */ }
         // 메인으로 이동 (또는 원래 가려던 경로)
         router.replace(from);
       } else if (res.status === 429) {

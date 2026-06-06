@@ -6,6 +6,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { SESSION_FLAG } from '@/lib/storage';
 
 const IDLE_LIMIT_MS = 60 * 60 * 1000; // 1시간 무활동 → 로그아웃
 const REFRESH_EVERY_MS = 10 * 60 * 1000; // 활동 중 10분마다 토큰 갱신
@@ -16,6 +17,17 @@ export function AuthKeepAlive() {
   const lastRefresh = useRef(Date.now());
 
   useEffect(() => {
+    // 새 브라우저 세션 감지 — sessionStorage 마커가 없으면 "창 닫고 다시 열기/새 탭"으로 보고
+    // 즉시 로그아웃한다(쿠키가 세션 복원·기존 영구 쿠키로 남아 있어도 차단). 같은 탭 새로고침은
+    // sessionStorage가 유지되므로 통과한다.
+    if (typeof window !== 'undefined' && !sessionStorage.getItem(SESSION_FLAG)) {
+      (async () => {
+        try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* 무시 */ }
+        window.location.href = '/login';
+      })();
+      return;
+    }
+
     const onActivity = () => {
       lastActivity.current = Date.now();
     };

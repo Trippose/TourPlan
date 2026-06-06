@@ -76,6 +76,11 @@ export function debounce<F extends (...args: never[]) => unknown>(fn: F, wait: n
 // ──────────────── 명명 견적 보관함(Library) ────────────────
 // 이름 붙여 다수 견적을 저장하고 목록에서 불러오기·삭제. (구 슬롯 3개를 대체)
 export const LIBRARY_KEY = "tour-pricing-pwa:library";
+
+// 브라우저 세션 마커(sessionStorage 키). 로그인 성공 시 설정되고, 탭/창을 닫으면 자동 삭제된다.
+// 인증 페이지 로드 시 이 마커가 없으면 "창 닫고 다시 열기/새 탭"(새 브라우저 세션)으로 보고
+// 로그아웃시킨다. 같은 탭 새로고침은 sessionStorage가 유지되므로 로그인을 유지한다.
+export const SESSION_FLAG = "tour-pricing-pwa:session-active";
 export const LIBRARY_MAX = 50; // 보관 상한 (localStorage 용량 보호)
 
 export interface LibrarySummary {
