@@ -79,39 +79,50 @@ export function KakaoMap({ stops, onDragEnd, shape = 'wide' }: KakaoMapProps) {
           '#A855F7', '#84CC16', '#0EA5E9', '#D946EF', '#22C55E',
         ];
 
-        indexed.forEach(({ s, i: origIdx }, viewIdx) => {
-          const pos = new window.kakao.maps.LatLng(s.latitude, s.longitude);
-          bounds.extend(pos);
-          path.push(pos);
-
-          const color = PATH_COLORS[viewIdx % PATH_COLORS.length];
-
-          // 마커 자체를 큰 원형 숫자 배지(SVG)로 — 사용자가 배지를 직접 잡고 드래그 가능
-          // (이전: 표준 마커 + 위에 CustomOverlay 배지 덮음 → 배지가 마커 hit-area를 가려 드래그 어려움)
-          const num = origIdx + 1;
-          const SIZE = 48;
+        const SIZE = 48;
+        // 번호 배지(SVG) MarkerImage 생성. offset = 좌표에 맞출 앵커 픽셀.
+        // 기본 중심(SIZE/2)에서 (dx,dy)를 빼면 배지가 화면상 (dx,dy)만큼 이동해 보인다
+        // (실제 마커 position·드래그 저장값은 불변 — 시각 표시만 이동).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const makeBadgeImage = (num: number, color: string, dx: number, dy: number): any => {
           const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${SIZE}' height='${SIZE}' viewBox='0 0 ${SIZE} ${SIZE}'>`
             + `<defs><filter id='s' x='-20%' y='-20%' width='140%' height='140%'><feDropShadow dx='0' dy='2' stdDeviation='2' flood-color='black' flood-opacity='0.35'/></filter></defs>`
             + `<circle cx='${SIZE / 2}' cy='${SIZE / 2}' r='${SIZE / 2 - 4}' fill='${color}' stroke='white' stroke-width='3' filter='url(#s)'/>`
             + `<text x='${SIZE / 2}' y='${SIZE / 2 + 7}' font-size='20' font-weight='900' fill='white' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif'>${num}</text>`
             + `</svg>`;
           const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-          const markerImage = new window.kakao.maps.MarkerImage(
+          return new window.kakao.maps.MarkerImage(
             svgUrl,
             new window.kakao.maps.Size(SIZE, SIZE),
-            { offset: new window.kakao.maps.Point(SIZE / 2, SIZE / 2) },
+            { offset: new window.kakao.maps.Point(SIZE / 2 - dx, SIZE / 2 - dy) },
           );
+        };
 
+        // 마커 메타 보관 — 줌 변경 시 화면 픽셀 거리로 겹침을 재계산하기 위함
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const markerMetas: { marker: any; pos: any; num: number; color: string }[] = [];
+
+        indexed.forEach(({ s, i: origIdx }, viewIdx) => {
+          const pos = new window.kakao.maps.LatLng(s.latitude, s.longitude);
+          bounds.extend(pos);
+          path.push(pos);
+
+          const color = PATH_COLORS[viewIdx % PATH_COLORS.length];
+          const num = origIdx + 1;
+
+          // 마커 자체를 큰 원형 숫자 배지로 — 사용자가 배지를 직접 잡고 드래그 가능.
+          // 초기엔 중심(0,0)으로 두고, 아래 충돌 회피가 화면 겹침에 맞춰 앵커를 갱신한다.
           const marker = new window.kakao.maps.Marker({
             position: pos,
             map,
             draggable: !!onDragEnd,
-            image: markerImage,
+            image: makeBadgeImage(num, color, 0, 0),
             title: onDragEnd
               ? `${num}번 — 드래그해서 위치 정밀 조정 (놓는 순간 좌표 자동 저장)`
               : `${num}번`,
             zIndex: 50 + viewIdx, // 뒤 번호일수록 위로
           });
+          markerMetas.push({ marker, pos, num, color });
 
           if (onDragEnd) {
             window.kakao.maps.event.addListener(marker, 'dragend', () => {
@@ -120,6 +131,56 @@ export function KakaoMap({ stops, onDragEnd, shape = 'wide' }: KakaoMapProps) {
             });
           }
         });
+
+        // ── 마커 충돌 회피 (줌 확대·축소 대응) ──────────────────────────
+        // 현재 줌에서 각 마커의 화면(컨테이너) 픽셀 좌표를 구해, 배지 지름 안으로 겹치는
+        // 마커들을 union-find로 묶고 부채꼴로 분산한다. zoom_changed·idle 마다 재계산하므로
+        // 어떤 배율에서도 마커가 서로 겹쳐 가려지지 않는다. 실제 좌표·드래그 저장값은 불변.
+        const FAN_R = 22;            // 부채꼴 분산 반경(px)
+        const OVERLAP_PX = SIZE - 4; // 겹침 판정 거리(px) ≈ 배지 지름
+        const applyAntiCollision = () => {
+          const proj = map.getProjection?.();
+          if (!proj || markerMetas.length === 0) return;
+          const n = markerMetas.length;
+          const pts = markerMetas.map((m) => {
+            const p = proj.containerPointFromCoords(m.pos);
+            return { x: p.x, y: p.y };
+          });
+          // union-find — 픽셀 거리 < OVERLAP_PX 인 마커들을 한 그룹으로 연결
+          const parent = Array.from({ length: n }, (_, i) => i);
+          const find = (x: number): number => (parent[x] === x ? x : (parent[x] = find(parent[x])));
+          for (let i = 0; i < n; i++) {
+            for (let j = i + 1; j < n; j++) {
+              if (Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y) < OVERLAP_PX) {
+                parent[find(i)] = find(j);
+              }
+            }
+          }
+          const groups = new Map<number, number[]>();
+          for (let i = 0; i < n; i++) {
+            const r = find(i);
+            const arr = groups.get(r);
+            if (arr) arr.push(i);
+            else groups.set(r, [i]);
+          }
+          // 그룹별 부채꼴 분산 (단독 마커는 중심 유지)
+          groups.forEach((idxs) => {
+            if (idxs.length === 1) {
+              const m = markerMetas[idxs[0]];
+              m.marker.setImage(makeBadgeImage(m.num, m.color, 0, 0));
+              return;
+            }
+            idxs.forEach((mi, order) => {
+              const angle = (2 * Math.PI * order) / idxs.length - Math.PI / 2; // 12시부터 균등
+              const m = markerMetas[mi];
+              m.marker.setImage(
+                makeBadgeImage(m.num, m.color, Math.cos(angle) * FAN_R, Math.sin(angle) * FAN_R),
+              );
+            });
+          });
+        };
+        window.kakao.maps.event.addListener(map, 'zoom_changed', applyAntiCollision);
+        window.kakao.maps.event.addListener(map, 'idle', applyAntiCollision);
 
         // 각 구간(leg)별로 별도 Polyline — 다른 색상
         for (let i = 0; i < path.length - 1; i++) {
