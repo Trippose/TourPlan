@@ -315,4 +315,29 @@
     margin-bottom: 8px !important;
     page-break-inside: avoid;
   }
+
+  /* 가로폭 최대화 — 카드·그리드·표가 A4 페이지 폭을 꽉 채우도록 (좌우 여백 최소) */
+  main > section,
+  main > div {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  table {
+    width: 100% !important;
+    table-layout: auto;
+  }
+  /* 매트릭스 등 넓은 표는 폰트를 약간 줄여 세로 A4 폭에 수용 (잘림 방지) */
+  .overflow-x-auto table {
+    font-size: 9pt !important;
+  }
+
+  /* 인쇄용 지도 이미지 — 가로폭 최대 + 한 페이지에 수용 */
+  img[alt="일정 지도 (인쇄용)"] {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 150mm;
+    object-fit: contain;
+    page-break-inside: avoid;
+  }
 }

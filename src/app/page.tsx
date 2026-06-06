@@ -2,7 +2,7 @@
 // 글로벌 트렌드 파스텔×진한 팔레트 · 가로 레이아웃 · 인라인 툴팁 · 룰 기반 AI 요약 · 카카오맵
 'use client';
 
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -342,6 +342,48 @@ export default function BuilderPage() {
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   // 공유 모달
   const [showShareModal, setShowShareModal] = useState(false);
+
+  // 인쇄용 지도 이미지(html2canvas 캡처 결과) + 캡처 대상 ref
+  const [printMapSrc, setPrintMapSrc] = useState<string | null>(null);
+  const mapCaptureRef = useRef<HTMLDivElement>(null);
+
+  // PDF·인쇄 — 카카오 지도 타일은 print 캡처가 보장되지 않으므로, html2canvas로 미리
+  // 이미지를 떠서 인쇄용 <img>에 넣은 뒤 window.print() 한다 (라이브 지도는 인쇄 시 숨김).
+  const handlePrint = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const el = mapCaptureRef.current;
+    if (el) {
+      try {
+        const html2canvas = (await import('html2canvas-pro')).default;
+        // 카카오 지도 타일(daumcdn.net)은 CORS 헤더가 없어 직접 캡처 불가. html2canvas의 onclone에서
+        // 캡처용 복제 DOM의 타일 img src만 same-origin 프록시(/api/img-proxy)로 교체하면 CORS 없이
+        // 캡처된다. 라이브 지도(원본 DOM)는 건드리지 않으므로 화면 영향 없음.
+        const canvas = await html2canvas(el, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          logging: false,
+          imageTimeout: 20000,
+          onclone: (clonedDoc) => {
+            const origin = window.location.origin;
+            clonedDoc.querySelectorAll('img').forEach((img) => {
+              const s = img.getAttribute('src') || '';
+              if (/(?:daumcdn\.net|kakao\.com)/.test(s) && !s.startsWith(origin)) {
+                img.setAttribute('crossorigin', 'anonymous');
+                img.setAttribute('src', `${origin}/api/img-proxy?url=${encodeURIComponent(s)}`);
+              }
+            });
+          },
+        });
+        setPrintMapSrc(canvas.toDataURL('image/png'));
+        // 인쇄용 <img>가 DOM에 반영될 시간을 준다
+        await new Promise((r) => setTimeout(r, 200));
+      } catch (err) {
+        console.warn('[print] 지도 캡처 실패 — 지도 없이 인쇄:', err);
+        setPrintMapSrc(null);
+      }
+    }
+    window.print();
+  }, []);
 
   // URL fragment(#q=...) 복원 — 공유 링크 진입 시 우선 적용 (localStorage보다 우선)
   useEffect(() => {
@@ -1069,8 +1111,8 @@ export default function BuilderPage() {
                   icon: '📄',
                   color: PAL.violet,
                   emphasized: true,
-                  onClick: () => { if (typeof window !== 'undefined') window.print(); },
-                  description: '견적서 PDF 저장·인쇄 (A4 세로, Ctrl+P)',
+                  onClick: handlePrint,
+                  description: '견적서 PDF 저장·인쇄 (지도 포함, A4 세로)',
                 },
                 {
                   id: 'excel',
@@ -2116,14 +2158,14 @@ export default function BuilderPage() {
           </CardContent>
         </Card>
 
-        {/* 지도 — 인쇄(PDF)에서는 제외: 카카오 타일은 print 캡처 미보장이라 빈 블록만 출력됨 (no-print) */}
-        <Card className="no-print">
+        {/* 지도 — 인쇄 시 카카오 타일은 print 캡처가 안 되므로, html2canvas로 뜬 이미지(printMapSrc)를 대신 출력 */}
+        <Card>
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
             <CardTitle className="text-base">
               <span title="좌표가 입력된 장소를 카카오맵 위에 순번 마커로 표시. 마커는 마우스로 드래그해 위치를 직접 미세 조정 가능. ▭ 가로형은 동선 확인, ▢ 정사각형은 남북 거리가 큰 일정 확인에 유리.">지도</span>
               <span className="text-xs font-normal" style={{ color: PAL.mute }}>— 좌표가 있는 장소만 순서대로 표시 · 마커 드래그로 위치 정밀 조정</span>
             </CardTitle>
-            <div className="inline-flex items-center overflow-hidden rounded-full border" style={{ borderColor: PAL.line }} role="group" aria-label="지도 크기 선택">
+            <div className="no-print inline-flex items-center overflow-hidden rounded-full border" style={{ borderColor: PAL.line }} role="group" aria-label="지도 크기 선택">
               <button
                 type="button"
                 onClick={() => setMapShape('wide')}
@@ -2154,7 +2196,7 @@ export default function BuilderPage() {
           <CardContent>
             {/* 드래그 안내 — 마커를 직접 이동해 좌표를 정밀 조정 */}
             <div
-              className="mb-2 flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 text-xs"
+              className="no-print mb-2 flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 text-xs"
               style={{ backgroundColor: PAL.rosePale, color: PAL.rose }}
             >
               <span className="font-black tracking-wider">🖱 마커 드래그 가능</span>
@@ -2162,17 +2204,29 @@ export default function BuilderPage() {
                 — 숫자 마커를 마우스로 잡아 원하는 위치로 끌어 놓으면 좌표가 자동 저장됩니다 (소수점 6자리, 약 11cm 정밀도). 검색으로 채운 위치를 시각적으로 미세 조정할 때 유용합니다.
               </span>
             </div>
-            <KakaoMap
-              shape={mapShape}
-              stops={stops.map((s) => ({
-                productName: s.productName,
-                latitude: typeof s.latitude === 'number' ? s.latitude : undefined,
-                longitude: typeof s.longitude === 'number' ? s.longitude : undefined,
-              }))}
-              onDragEnd={(idx, lat, lng) =>
-                patchStop(idx, { latitude: Number(lat.toFixed(6)), longitude: Number(lng.toFixed(6)) })
-              }
-            />
+            {/* 라이브 지도 — 화면 전용(인쇄 시 숨김), html2canvas 캡처 대상 */}
+            <div ref={mapCaptureRef} className="print:hidden">
+              <KakaoMap
+                shape={mapShape}
+                stops={stops.map((s) => ({
+                  productName: s.productName,
+                  latitude: typeof s.latitude === 'number' ? s.latitude : undefined,
+                  longitude: typeof s.longitude === 'number' ? s.longitude : undefined,
+                }))}
+                onDragEnd={(idx, lat, lng) =>
+                  patchStop(idx, { latitude: Number(lat.toFixed(6)), longitude: Number(lng.toFixed(6)) })
+                }
+              />
+            </div>
+            {/* 인쇄용 지도 이미지 — 화면 숨김, 인쇄 시 표시 (html2canvas 캡처 결과) */}
+            {printMapSrc && (
+              <img
+                src={printMapSrc}
+                alt="일정 지도 (인쇄용)"
+                className="hidden w-full rounded-2xl border print:block"
+                style={{ borderColor: PAL.line }}
+              />
+            )}
           </CardContent>
         </Card>
 
