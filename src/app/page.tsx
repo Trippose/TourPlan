@@ -958,10 +958,10 @@ export default function BuilderPage() {
     URL.revokeObjectURL(url);
   };
 
-  // 카카오 모빌리티 API로 실시간 차량 이동시간 가져와 모든 leg.travelFromPrevMin 일괄 갱신
-  const updateTravelFromKakao = async () => {
-    setKakaoLoading(true);
-    setKakaoMsg(null);
+  // 카카오 모빌리티 API로 실시간 차량 이동시간을 가져와 좌표 있는 미고정 leg.travelFromPrevMin 갱신.
+  // auto=true: 좌표 변경 시 자동 호출(백그라운드) — 로딩 표시 없이 간단 토스트만, 대상 없으면 조용히 종료.
+  const updateTravelFromKakao = async (auto = false) => {
+    if (!auto) { setKakaoLoading(true); setKakaoMsg(null); }
     try {
       // 좌표가 있는 인접 leg만 호출 대상. 단, 고정(travelLocked) 또는 도착시각 고정(arriveFixed) 카드는 제외.
       const targets: { idx: number; payload: { originLat: number; originLng: number; destLat: number; destLng: number } }[] = [];
@@ -990,13 +990,15 @@ export default function BuilderPage() {
         }
       }
       if (targets.length === 0) {
-        setKakaoMsg({
-          ok: false,
-          text: lockedSkipped > 0
-            ? `실시간 갱신 대상이 없습니다 — 좌표 있는 카드 ${lockedSkipped}건이 모두 고정 상태입니다 (고정 해제 후 시도)`
-            : '좌표가 있는 인접 카드가 없습니다 — 일정에 위도·경도 입력 후 시도',
-        });
-        setKakaoLoading(false);
+        if (!auto) {
+          setKakaoMsg({
+            ok: false,
+            text: lockedSkipped > 0
+              ? `실시간 갱신 대상이 없습니다 — 좌표 있는 카드 ${lockedSkipped}건이 모두 고정 상태입니다 (고정 해제 후 시도)`
+              : '좌표가 있는 인접 카드가 없습니다 — 일정에 위도·경도 입력 후 시도',
+          });
+          setKakaoLoading(false);
+        }
         return;
       }
       const res = await fetch('/api/route-time', {
@@ -1006,8 +1008,7 @@ export default function BuilderPage() {
       });
       const json = await res.json();
       if (!json.ok) {
-        setKakaoMsg({ ok: false, text: json.error || `HTTP ${res.status}` });
-        setKakaoLoading(false);
+        if (!auto) { setKakaoMsg({ ok: false, text: json.error || `HTTP ${res.status}` }); setKakaoLoading(false); }
         return;
       }
       // 응답을 stops 에 일괄 적용
@@ -1022,15 +1023,41 @@ export default function BuilderPage() {
         return cp;
       });
       const s = json.summary ?? { succeeded: 0, failed: 0, total: targets.length };
-      setKakaoMsg({
-        ok: s.failed === 0,
-        text: `카카오 모빌리티 갱신 완료 — 성공 ${s.succeeded}/${s.total}${s.failed > 0 ? ` (실패 ${s.failed}건, 실패한 leg는 자동 추정값 유지)` : ''}${lockedSkipped > 0 ? ` · 고정 ${lockedSkipped}건 제외` : ''}`,
-      });
+      if (auto) {
+        // 자동 반영 — 성공한 구간이 있을 때만 짧은 토스트 (실패·대상없음은 조용히)
+        if (s.succeeded > 0) {
+          setKakaoMsg({
+            ok: s.failed === 0,
+            text: `🚗 실시간 교통 자동 반영 — ${s.succeeded}/${s.total} 구간${s.failed > 0 ? ` (실패 ${s.failed} 추정값 유지)` : ''}${lockedSkipped > 0 ? ` · 고정 ${lockedSkipped} 제외` : ''}`,
+          });
+          setTimeout(() => setKakaoMsg(null), 2800);
+        }
+      } else {
+        setKakaoMsg({
+          ok: s.failed === 0,
+          text: `카카오 모빌리티 갱신 완료 — 성공 ${s.succeeded}/${s.total}${s.failed > 0 ? ` (실패 ${s.failed}건, 실패한 leg는 자동 추정값 유지)` : ''}${lockedSkipped > 0 ? ` · 고정 ${lockedSkipped}건 제외` : ''}`,
+        });
+      }
     } catch (e) {
-      setKakaoMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
+      if (!auto) setKakaoMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
     }
-    setKakaoLoading(false);
+    if (!auto) setKakaoLoading(false);
   };
+
+  // 좌표(또는 고정 상태) 변경 시 카카오 실시간 교통 이동시간을 자동 반영 (디바운스 1.5초).
+  // travelFromPrevMin 값 변경은 키에 미포함 → 자동 호출 결과가 다시 트리거하지 않아 무한 호출 없음.
+  // 고정(🔒)·도착시각 고정 leg는 updateTravelFromKakao 내부에서 제외된다.
+  const autoTravelKey = useMemo(
+    () => stops.map((s) => `${s.latitude},${s.longitude},${s.travelLocked ? 1 : 0},${s.arriveFixed}`).join('|'),
+    [stops],
+  );
+  useEffect(() => {
+    if (!hydrated || stops.length < 2) return;
+    const t = setTimeout(() => { void updateTravelFromKakao(true); }, 1500);
+    return () => clearTimeout(t);
+    // autoTravelKey(좌표·고정) 변경 시에만 자동 호출 — updateTravelFromKakao는 의도적으로 deps 제외
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTravelKey, hydrated]);
 
   // 세션 마커 확인 전에는 빌더를 렌더하지 않는다 — 창 닫고 다시 열 때 이전 견적이 노출되는 것 방지.
   if (!sessionChecked) {
@@ -1788,7 +1815,7 @@ export default function BuilderPage() {
               <button
                 type="button"
                 disabled={stops.length < 2 || kakaoLoading}
-                onClick={updateTravelFromKakao}
+                onClick={() => void updateTravelFromKakao(false)}
                 className="rounded-full px-3.5 py-1.5 text-xs font-bold text-white transition disabled:opacity-40 hover:scale-105"
                 style={{ backgroundColor: PAL.violet }}
                 title="모든 일정·좌표 입력 완료 후 클릭 — 카카오 모빌리티가 실시간 교통 상황을 반영해 차량 이동시간을 정밀 갱신합니다."
