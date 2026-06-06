@@ -218,6 +218,32 @@
     border-color: #C0306B !important;
     box-shadow: 0 0 0 3px rgba(192, 48, 107, 0.18);
   }
+
+  /* 일정 카드 사이 이동 화살표 — 버스가 좌→우로 달리는 ambient 모션.
+     transform·opacity만 사용(레이아웃 변화 0). prefers-reduced-motion: reduce 시
+     globals @layer base 규칙이 iteration 1·0.01ms로 강제해 자동 정지(장식 모션 제거). */
+  .bus-track {
+    position: relative;
+    height: 1rem;
+    width: 2.75rem;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .bus-track .bus {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 0.9rem;
+    line-height: 1rem;
+    will-change: transform;
+    animation: bus-drive 2.4s linear infinite;
+  }
+  @keyframes bus-drive {
+    0%   { transform: translateX(-130%); opacity: 0; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { transform: translateX(2.75rem); opacity: 0; }
+  }
 }
 
 /* ───────────── 모바일·PWA 최적화 ───────────── */

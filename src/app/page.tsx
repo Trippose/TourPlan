@@ -1985,6 +1985,10 @@ export default function BuilderPage() {
                             {leg && (
                         <div className="flex items-center px-2 text-center text-xs" style={{ color: PAL.mute }}>
                           <div className="flex flex-col items-center gap-1">
+                            {/* 이동 구간 — 버스가 화살표 위를 좌→우로 달리는 모션 (reduce 시 자동 정지·인쇄 시 숨김) */}
+                            <div className="bus-track no-print" aria-hidden>
+                              <span className="bus" style={{ animationDelay: `${(idxInDay % 5) * 0.45}s` }}>🚌</span>
+                            </div>
                             <div className="text-2xl font-black" style={{ color: PAL.rose }}>→</div>
                             <div className="text-sm font-bold" style={{ color: PAL.inkSoft }}>
                               {leg.km !== null ? `${leg.km.toFixed(1)}km` : '좌표'}
