@@ -46,6 +46,28 @@ describe('computeItinerary', () => {
     expect(r.totalTravelMin).toBe(0);
     expect(r.totalMin).toBe(150);
   });
+
+  // 회귀 방지 (2026-06-11): 추정 이동시간이 소수면 표시("N분" 반올림)와 도착시각 누적(소수)이
+  // 어긋나 합계 행이 ±1분 모순됐다. 추정 leg는 정수 분이어야 한다.
+  it('추정 leg minutes는 정수 — 표시·누적 시각 일치 보장', () => {
+    const r = computeItinerary([
+      { recommendedStayMin: 90, latitude: 37.579617, longitude: 126.977041 }, // 경복궁
+      { recommendedStayMin: 60, latitude: 37.563757, longitude: 126.983394 }, // 명동
+    ]);
+    expect(r.legs[0].minutes).not.toBeNull();
+    expect(Number.isInteger(r.legs[0].minutes)).toBe(true);
+    // 합계도 정수 leg의 합과 동일
+    expect(r.totalTravelMin).toBe(r.legs[0].minutes);
+  });
+
+  it('수동 입력 이동시간은 그대로 보존 (override 우선)', () => {
+    const r = computeItinerary([
+      { recommendedStayMin: 30, latitude: 37.55, longitude: 126.97 },
+      { recommendedStayMin: 30, latitude: 37.5, longitude: 126.95, travelFromPrevMin: 12 },
+    ]);
+    expect(r.legs[0].minutes).toBe(12);
+    expect(r.totalTravelMin).toBe(12);
+  });
 });
 
 describe('formatMin', () => {

@@ -79,11 +79,13 @@ export function computeItinerary(
         km = directKm * ROAD_DETOUR_FACTOR;
       }
       // 시간 — override 우선, 없으면 좌표 기반 추정
+      // 추정값은 구간 단위로 정수 분 반올림 — 표시("N분")와 도착시각 누적이 같은 값을 쓰게 해
+      // 합계 행의 ±1분 모순(표시는 반올림, 누적은 소수)을 차단한다.
       let min: number | null;
       if (typeof b.travelFromPrevMin === 'number' && b.travelFromPrevMin >= 0) {
         min = b.travelFromPrevMin;
       } else if (km !== null) {
-        min = travelMinutes(km, speedKmh);
+        min = Math.round(travelMinutes(km, speedKmh));
       } else {
         min = null;
       }
