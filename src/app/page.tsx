@@ -2423,9 +2423,9 @@ export default function BuilderPage() {
                           const ch = channels.find((c) => c.code === cell.channelCode);
                           const isFirstProfit =
                             cell.profitRate >= 0 && firstProfitablePaxByChannel.get(cell.channelCode) === row.pax;
-                          // 1인 순수익(₩) = 채널 수령가 − 1인 원가
+                          // 1인 순수익(₩) = 채널 수령가 − 1인 원가 (반올림 전 정밀값 — 총액 오차 증폭 방지)
                           const profitPerHead = ch
-                            ? salePrice * (1 - ch.commission - ch.cardFee) - row.costPerAdult
+                            ? salePrice * (1 - ch.commission - ch.cardFee) - row.costPerAdultExact
                             : 0;
                           // N명 채널 총 수익 = 1인 순수익 × 인원
                           const channelTotal = profitPerHead * row.pax;
@@ -2505,9 +2505,9 @@ export default function BuilderPage() {
                           const isFirstProfit =
                             cell.profitRate >= 0 && firstProfitablePaxByChannel.get(cell.channelCode) === row.pax;
                           const ch = channels.find((c) => c.code === cell.channelCode);
-                          // 1인 순수익 = 채널 수령가 − 1인 원가
+                          // 1인 순수익 = 채널 수령가 − 1인 원가 (반올림 전 정밀값 — 총액 오차 증폭 방지)
                           const profitPerHead = ch
-                            ? salePrice * (1 - ch.commission - ch.cardFee) - row.costPerAdult
+                            ? salePrice * (1 - ch.commission - ch.cardFee) - row.costPerAdultExact
                             : 0;
                           // N명 채널 총 수익 = 1인 순수익 × 인원
                           const channelTotal = profitPerHead * row.pax;

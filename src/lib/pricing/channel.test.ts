@@ -73,6 +73,26 @@ describe('STEP 11~13 — 매트릭스 + BEP 통합 (9인원 × 3채널 = 27셀)'
   });
 });
 
+describe('매트릭스 정밀 합계 — 반올림 오차 인원 증폭 회귀 방지', () => {
+  // 실측 사례 (2026-06-11): perPerson 39,000 + 공통 1,000,000, 판매가 150,000, N=15.
+  // 1인 원가 = 39,000 + 66,666.67 = 105,666.67 → 반올림 105,667로 총액을 구하면
+  // 수수료 0 채널 총수익이 664,995로 표시(정확값 665,000과 5원 차이).
+  const r = analyzeChannels({ perPersonItems: 39000, partySharedTotal: 1000000, salePrice: 150000 });
+  const row15 = r.matrix.find((m) => m.pax === 15)!;
+
+  it('costPerAdultExact는 반올림 전 정밀값을 보존한다', () => {
+    expect(row15.costPerAdult).toBe(105667); // 표시용 반올림
+    expect(row15.costPerAdultExact).toBeCloseTo(39000 + 1000000 / 15, 6);
+  });
+
+  it('정밀값 기반 N명 총수익 = N×판매가 − N×인당항목 − 공통비 (수수료 0 채널)', () => {
+    const channelTotal = (150000 - row15.costPerAdultExact) * 15;
+    expect(Math.round(channelTotal)).toBe(150000 * 15 - 39000 * 15 - 1000000); // = 665,000
+    // 반올림값으로 계산하면 5원 어긋난다 — 이 경로로 회귀하면 안 됨
+    expect((150000 - row15.costPerAdult) * 15).toBe(664995);
+  });
+});
+
 describe('STEP 14 — OTA 6사', () => {
   const otas = analyzeOtas({ perPersonItems: 100000, partySharedTotal: 1000000, salePrice: 150000, pax: 20 });
 

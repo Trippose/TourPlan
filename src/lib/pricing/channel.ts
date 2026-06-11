@@ -79,6 +79,7 @@ export function analyzeChannels(input: ChannelAnalysisInput): ChannelAnalysis {
     return {
       pax,
       costPerAdult: Math.round(cost),
+      costPerAdultExact: cost,
       cells: channels.map((ch) => ({
         channelCode: ch.code,
         profitRate: Math.round(channelProfitRate(salePrice, cost, ch) * 10) / 10,

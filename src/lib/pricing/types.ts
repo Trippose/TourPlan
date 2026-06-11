@@ -172,6 +172,9 @@ export interface ChannelCell {
 export interface MatrixRow {
   pax: number;
   costPerAdult: number;
+  // 반올림 전 정밀 1인 원가 — 총액(× 인원) 계산용.
+  // 반올림값(costPerAdult)으로 총액을 구하면 오차가 인원수만큼 증폭된다 (예: 15명 × 0.33원 = 5원).
+  costPerAdultExact: number;
   cells: ChannelCell[];
   // 이 행의 인원이 어느 채널의 BEP에 해당하면 그 채널 코드들 (표시 강조용)
   bepFor?: string[];
