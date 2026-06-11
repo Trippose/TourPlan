@@ -2,7 +2,7 @@
 // services 라이브러리 포함(검색용). 키 없으면 안내 박스로 폴백.
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 declare global {
   interface Window {
@@ -28,6 +28,9 @@ export function KakaoMap({ stops, onDragEnd, shape = 'wide' }: KakaoMapProps) {
   const ref = useRef<HTMLDivElement>(null);
   // 지도 인스턴스 — shape 변경 시 relayout 호출용
   const mapRef = useRef<unknown>(null);
+  // SDK 스크립트 다운로드 실패 (대표 원인: 카카오 콘솔에 현재 도메인 미등록 → 401 domain mismatched)
+  // 실패를 빈 박스로 감추지 않고 원인·조치를 화면에 안내한다 (no-silent-fallback).
+  const [loadFailed, setLoadFailed] = useState(false);
   const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
 
   // 좌표 있는 stop만 추출 + 원본 인덱스 보존 (드래그 콜백에 원본 인덱스 전달용)
@@ -202,10 +205,28 @@ export function KakaoMap({ stops, onDragEnd, shape = 'wide' }: KakaoMapProps) {
       init();
       return;
     }
+    // 로드 실패 처리 — 실패 사실을 스크립트 태그에 마킹해 effect 재실행 시에도 감지 가능하게 한다.
+    const markFailed = (el: HTMLScriptElement) => {
+      el.dataset.kakaoFailed = '1';
+      console.error(
+        `[KakaoMap] SDK 다운로드 실패 — 카카오 개발자 콘솔 Web 플랫폼에 현재 주소(${window.location.origin}) 등록 여부를 확인하세요 (401 domain mismatched).`,
+      );
+      setLoadFailed(true);
+    };
     const existing = document.querySelector<HTMLScriptElement>('script[data-kakao-sdk]');
     if (existing) {
+      // 이전 시도에서 이미 실패한 스크립트 — load 이벤트는 다시 오지 않으므로 즉시 실패 표시
+      if (existing.dataset.kakaoFailed === '1') {
+        setLoadFailed(true);
+        return;
+      }
+      const onErr = () => markFailed(existing);
       existing.addEventListener('load', init);
-      return () => existing.removeEventListener('load', init);
+      existing.addEventListener('error', onErr);
+      return () => {
+        existing.removeEventListener('load', init);
+        existing.removeEventListener('error', onErr);
+      };
     }
     const script = document.createElement('script');
     // libraries=services — Places(키워드 검색)·Geocoder(주소 검색) 활성화
@@ -213,6 +234,7 @@ export function KakaoMap({ stops, onDragEnd, shape = 'wide' }: KakaoMapProps) {
     script.async = true;
     script.dataset.kakaoSdk = '1';
     script.onload = init;
+    script.onerror = () => markFailed(script);
     document.head.appendChild(script);
   }, [key, pathKey, onDragEnd]);
 
@@ -267,6 +289,27 @@ export function KakaoMap({ stops, onDragEnd, shape = 'wide' }: KakaoMapProps) {
             developers.kakao.com
           </a>{' '}
           → 내 애플리케이션 → 앱 키 → JavaScript 키
+        </p>
+      </div>
+    );
+  }
+
+  // SDK 다운로드 실패 — 대표 원인은 카카오 콘솔 미등록 도메인(포트 포함) 접속. 원인·조치를 화면에 직접 안내.
+  if (loadFailed) {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return (
+      <div className={`flex ${shapeClass} flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#E8B4B4] bg-[#FDF6F6] p-6 text-center`}>
+        <div className="text-sm font-semibold text-[#9F1239]">지도 로드 실패 — 카카오 SDK가 현재 주소를 거부했습니다</div>
+        <p className="mt-2 max-w-lg text-xs leading-relaxed text-[#6B7280]">
+          현재 접속 주소{' '}
+          <code className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold text-[#9F1239]">{origin}</code>
+          가 카카오 개발자 콘솔에 등록돼 있지 않으면 SDK가 401(domain mismatched)로 차단됩니다.
+          <br />
+          <a href="https://developers.kakao.com" target="_blank" rel="noreferrer" className="font-semibold text-[#C0306B] underline">
+            developers.kakao.com
+          </a>{' '}
+          → 내 애플리케이션 → 앱 설정 → 플랫폼 → Web에 위 주소를 추가한 뒤 새로고침하세요.
+          네트워크 차단(방화벽·오프라인)일 수도 있습니다 — 개발자도구 콘솔의 [KakaoMap] 메시지를 확인하세요.
         </p>
       </div>
     );
