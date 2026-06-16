@@ -513,14 +513,21 @@ export default function BuilderPage() {
   const vehicleTotal = vehicles.reduce((s, v) => s + v.dailyKrw * v.days, 0);
   const guideTotal = guides.reduce((s, g) => s + g.dailyKrw * g.days, 0);
 
-  const tiers = partyTiered
-    ? {
-        adult: { count: adult, multiplier: 1.0 },
-        youth: { count: youth, multiplier: 0.7 },
-        child: { count: child, multiplier: 0.5 },
-        infant: { count: infant, multiplier: 0.0 },
-      }
-    : { adult: { count: totalPax, multiplier: 1.0 } };
+  // tiers는 useMemo로 안정화 — 매 렌더 새 객체면 아래 input useMemo가 무효화돼
+  // cost·channelAnalysis·insights가 입력 한 글자마다 전부 재계산된다(체감 렉의 핵심).
+  // 원시값 deps로 참조를 고정해 메모이제이션을 실제로 작동시킨다.
+  const tiers = useMemo(
+    () =>
+      partyTiered
+        ? {
+            adult: { count: adult, multiplier: 1.0 },
+            youth: { count: youth, multiplier: 0.7 },
+            child: { count: child, multiplier: 0.5 },
+            infant: { count: infant, multiplier: 0.0 },
+          }
+        : { adult: { count: totalPax, multiplier: 1.0 } },
+    [partyTiered, adult, youth, child, infant, totalPax],
+  );
 
   const input: CalculationInput = useMemo(
     () => ({
@@ -576,9 +583,10 @@ export default function BuilderPage() {
     if (!hydrated) return;
     setSaveStatus('dirty');
     const payload = buildPayload();
+    // 디바운스 저장만 사용 — 과거의 즉시 동기 saveState()는 입력 한 글자마다
+    // JSON.stringify + localStorage.setItem을 실행해 타이핑을 막았다(체감 렉).
+    // 800ms 디바운스로 일원화한다(저장 유실 윈도우 최대 800ms).
     debouncedSave(payload);
-    // 즉시 저장(디바운스 없이) — 항상 최신 작업본 보존
-    saveState(payload);
     // 디바운스 800ms + 약간의 여유 — 저장 완료 추정 후 'saved'로 전환
     const t = setTimeout(() => setSaveStatus('saved'), 1000);
     return () => clearTimeout(t);
@@ -737,6 +745,18 @@ export default function BuilderPage() {
     [stops],
   );
 
+  // 지도 props 안정화 — KakaoMap effect 의존성(onDragEnd·좌표)이 매 렌더 새 참조면
+  // 지도를 통째로 재생성해 "나왔다 안 나왔다" 깜빡임 + 렉이 난다. 좌표·이름만 추출해 메모이즈한다.
+  const mapStops = useMemo(
+    () =>
+      stops.map((s) => ({
+        productName: s.productName,
+        latitude: typeof s.latitude === 'number' ? s.latitude : undefined,
+        longitude: typeof s.longitude === 'number' ? s.longitude : undefined,
+      })),
+    [stops],
+  );
+
   // 총 일자 수 — 박수(nights) + 1, 최소 1
   const totalDays = useMemo(() => Math.max(1, nights + 1), [nights]);
 
@@ -833,6 +853,15 @@ export default function BuilderPage() {
   // ──────────────── 핸들러 ────────────────
   const patchStop = (i: number, p: Partial<StopRow>) =>
     setStops((rs) => rs.map((r, j) => (j === i ? { ...r, ...p } : r)));
+  // 지도 마커 드래그 종료 — 안정 참조(useCallback)로 KakaoMap 불필요 재생성을 차단한다.
+  // setStops 함수형 업데이트만 쓰므로 deps 비워도 항상 최신 stops를 갱신한다.
+  const handleMapDragEnd = useCallback((idx: number, lat: number, lng: number) => {
+    setStops((rs) =>
+      rs.map((r, j) =>
+        j === idx ? { ...r, latitude: Number(lat.toFixed(6)), longitude: Number(lng.toFixed(6)) } : r,
+      ),
+    );
+  }, []);
   const removeStop = (i: number) => setStops((rs) => rs.filter((_, j) => j !== i));
   const addStop = (t: StopType = 'sight', dayNumber = 1) =>
     setStops((rs) => (rs.length >= MAX_STOPS ? rs : [...rs, emptyStop(t, dayNumber)]));
@@ -2282,17 +2311,7 @@ export default function BuilderPage() {
             </div>
             {/* 라이브 지도 — 화면 전용(인쇄 시 숨김), html2canvas 캡처 대상 */}
             <div ref={mapCaptureRef} className="print:hidden">
-              <KakaoMap
-                shape={mapShape}
-                stops={stops.map((s) => ({
-                  productName: s.productName,
-                  latitude: typeof s.latitude === 'number' ? s.latitude : undefined,
-                  longitude: typeof s.longitude === 'number' ? s.longitude : undefined,
-                }))}
-                onDragEnd={(idx, lat, lng) =>
-                  patchStop(idx, { latitude: Number(lat.toFixed(6)), longitude: Number(lng.toFixed(6)) })
-                }
-              />
+              <KakaoMap shape={mapShape} stops={mapStops} onDragEnd={handleMapDragEnd} />
             </div>
             {/* 인쇄용 지도 이미지 — 화면 숨김, 인쇄 시 표시 (html2canvas 캡처 결과) */}
             {printMapSrc && (
