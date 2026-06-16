@@ -363,6 +363,38 @@ check('R43', 'src/components/LibraryModal.tsx 존재 (견적 보관함 — 구 �
   return true;
 });
 
+// ─────────────── 성능·지도 리렌더 회귀 (R44~R46, 2026-06-16) ───────────────
+
+check('R44', 'page.tsx tiers를 useMemo로 안정화 (input·cost·매트릭스 메모이제이션 무력화 박멸)', () => {
+  // tiers가 매 렌더 새 객체면 input useMemo가 무효화돼 cost·channelAnalysis·insights가
+  // 입력 한 글자마다 전부 재계산된다(체감 렉). useMemo로 안정화돼 있어야 한다.
+  if (!/const tiers = useMemo\(/.test(pageTsx)) {
+    return 'tiers가 useMemo로 안정화되지 않음 — input/cost/매트릭스 재계산 폭발 회귀 위험.';
+  }
+  return true;
+});
+
+check('R45', 'KakaoMap에 안정 참조 props 전달 (좌표 미변경 입력 시 지도 재생성·깜빡임 박멸)', () => {
+  // stops/onDragEnd가 매 렌더 새 참조면 KakaoMap effect가 지도를 통째 재생성한다.
+  // mapStops(useMemo) + handleMapDragEnd(useCallback) 안정 참조를 써야 한다.
+  if (!/const mapStops = useMemo\(/.test(pageTsx)) return 'mapStops useMemo 누락 — 지도 stops 매 렌더 새 배열 회귀.';
+  if (!/const handleMapDragEnd = useCallback\(/.test(pageTsx)) return 'handleMapDragEnd useCallback 누락 — onDragEnd 매 렌더 새 함수 회귀.';
+  // KakaoMap에 인라인 stops={stops.map( 또는 인라인 onDragEnd 화살표를 직접 넘기면 회귀
+  if (/<KakaoMap[\s\S]{0,200}stops=\{stops\.map\(/.test(pageTsx)) {
+    return 'KakaoMap에 인라인 stops={stops.map(...)} 회귀 — mapStops로 교체 필요.';
+  }
+  return true;
+});
+
+check('R46', 'page.tsx 자동저장이 디바운스 전용 (입력당 동기 saveState localStorage I/O 박멸)', () => {
+  // 자동저장 useEffect에서 debouncedSave 직후 동기 saveState(payload)를 또 호출하면
+  // 입력 한 글자마다 JSON.stringify + localStorage.setItem이 실행돼 타이핑이 막힌다.
+  if (/debouncedSave\(payload\);[\s\S]{0,160}saveState\(payload\)/.test(pageTsx)) {
+    return '자동저장 effect에 동기 saveState(payload) 회귀 — 입력당 동기 localStorage I/O로 렉 재발.';
+  }
+  return true;
+});
+
 // ─────────────── 결과 출력 ───────────────
 const passed = results.filter((r) => r.status === 'PASS').length;
 const failed = results.filter((r) => r.status === 'FAIL').length;
