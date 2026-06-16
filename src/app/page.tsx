@@ -51,7 +51,7 @@ import type {
 } from '@/lib/pricing';
 import { computeItinerary, formatMin } from '@/lib/itinerary';
 import {
-  loadState, saveState, clearState, debounce, SESSION_FLAG,
+  loadState, saveState, clearState, SESSION_FLAG,
   loadLibrary, saveToLibrary, deleteFromLibrary, verifyLibraryPin, migrateSlotsToLibrary, LIBRARY_MAX,
   type LibraryItem,
 } from '@/lib/storage';
@@ -497,15 +497,6 @@ export default function BuilderPage() {
     }
   }, []);
 
-  // 디바운스된 저장 함수 (입력 변화 후 800ms 후 1회 저장)
-  const debouncedSave = useMemo(
-    () =>
-      debounce((payload: unknown) => {
-        saveState(payload);
-      }, 800),
-    [],
-  );
-
   // 파생
   const partyTotal = partyTiered ? adult + youth + child + infant : totalPax;
   const totalSeats = vehicles.reduce((s, v) => s + v.maxBoard, 0);
@@ -586,11 +577,11 @@ export default function BuilderPage() {
     // 디바운스 저장만 사용 — 과거의 즉시 동기 saveState()는 입력 한 글자마다
     // JSON.stringify + localStorage.setItem을 실행해 타이핑을 막았다(체감 렉).
     // 800ms 디바운스로 일원화한다(저장 유실 윈도우 최대 800ms).
-    debouncedSave(payload);
+    // 저장은 아래 디바운스 타이머에서 1회만 수행한다.
     // 디바운스 800ms + 약간의 여유 — 저장 완료 추정 후 'saved'로 전환
     const t = setTimeout(() => setSaveStatus('saved'), 1000);
     return () => clearTimeout(t);
-  }, [hydrated, debouncedSave, buildPayload]);
+  }, [hydrated, buildPayload]);
 
   // 저장 payload → 폼 setter 일괄 적용 (보관함 불러오기 공통). sanitize 경유로 손상 데이터 방어.
   const applyPayload = (d: Record<string, unknown>) => {
@@ -862,6 +853,21 @@ export default function BuilderPage() {
       ),
     );
   }, []);
+  // 인원 통합↔구분 모드 전환 — 반대 모드 값을 동기화해 partyTotal 오염을 막는다.
+  // 통합→구분: 총원을 성인으로 이관(개별값이 모두 0일 때만 덮어쓰기). 구분→통합: 4tier 합을 총원으로.
+  const handlePartyModeToggle = (toTiered: boolean) => {
+    if (toTiered) {
+      if (adult === 0 && youth === 0 && child === 0 && infant === 0) setAdult(totalPax);
+      setTotalPax(0);
+    } else {
+      setTotalPax(adult + youth + child + infant);
+      setAdult(0);
+      setYouth(0);
+      setChild(0);
+      setInfant(0);
+    }
+    setPartyTiered(toTiered);
+  };
   const removeStop = (i: number) => setStops((rs) => rs.filter((_, j) => j !== i));
   const addStop = (t: StopType = 'sight', dayNumber = 1) =>
     setStops((rs) => (rs.length >= MAX_STOPS ? rs : [...rs, emptyStop(t, dayNumber)]));
@@ -1432,7 +1438,7 @@ export default function BuilderPage() {
                 <input
                   type="number"
                   value={nights}
-                  onChange={(e) => setNights(Math.max(0, Number(e.target.value) || 0))}
+                  onChange={(e) => setNights(Math.max(0, Math.min(365, Number(e.target.value) || 0)))}
                   min={6}
                   max={365}
                   className="h-8 w-20 rounded border bg-white px-2 text-right text-sm font-bold tabular-nums"
@@ -1556,7 +1562,7 @@ export default function BuilderPage() {
               <CardTitle className="text-base" title="구분 모드는 성인 1.0·청소년 0.7·어린이 0.5·유아 0.0 적용">
                 인원
               </CardTitle>
-              <ModeToggle off="통합" on="구분" checked={partyTiered} onChange={setPartyTiered} />
+              <ModeToggle off="통합" on="구분" checked={partyTiered} onChange={handlePartyModeToggle} />
             </CardHeader>
             <CardContent>
               {partyTiered ? (
@@ -1652,7 +1658,7 @@ export default function BuilderPage() {
                       small
                       tooltip={`안전·편의상 실제 운용 가능 인원 (예: 45인승 → 실 탑승 40명 권장). 최대 탑승 인원(${v.capacity || '?'}명)을 초과할 수 없으며, 초과 입력 시 자동으로 최대값으로 클램프됩니다.`}
                     />
-                    <NumField label="차량비/일 (차량+기사팁)" value={v.dailyKrw} onChange={(n) => patchVehicle(i, { dailyKrw: n })} step={50000} small currency tooltip="1일 차량비 + 기사님 팁 합계" />
+                    <NumField label="차량비/일 (차량+기사팁)" value={v.dailyKrw} onChange={(n) => patchVehicle(i, { dailyKrw: n })} step={50000} small currency tooltip="1일 차량비 + 기사님 팁 합계. 원 단위 — 1원까지 그대로 반영(예: 50만원이면 500000 입력). 화살표·휠은 5만원씩 조정." />
                     <NumField label="운영 일수" value={v.days} onChange={(n) => patchVehicle(i, { days: n })} small tooltip="차량 운용 일수" />
                   </div>
                 </div>
@@ -1692,7 +1698,7 @@ export default function BuilderPage() {
                     <DeleteBtn onClick={() => setGuides((rs) => rs.filter((_, j) => j !== i))} />
                   </div>
                   <div className="grid grid-cols-2 gap-1.5">
-                    <NumField label="가이드비/일" value={g.dailyKrw} onChange={(n) => patchGuide(i, { dailyKrw: n })} step={10000} small currency tooltip="1일 가이드 인건비" />
+                    <NumField label="가이드비/일" value={g.dailyKrw} onChange={(n) => patchGuide(i, { dailyKrw: n })} step={10000} small currency tooltip="1일 가이드 인건비. 원 단위 — 1원까지 그대로 반영(예: 20만원이면 200000 입력). 화살표·휠은 1만원씩 조정." />
                     <NumField label="운영 일수" value={g.days} onChange={(n) => patchGuide(i, { days: n })} small tooltip="가이드 운영 일수" />
                   </div>
                 </div>
@@ -1713,7 +1719,7 @@ export default function BuilderPage() {
                 value={salePrice}
                 onChange={setSalePrice}
                 step={5000}
-                tooltip="고객 청구가 (VAT 10% 포함된 최종 금액). 매트릭스·BEP·수익률 산출의 기준값. 비워두면 모든 분석이 0으로 표시됩니다."
+                tooltip="원 단위 입력 — 1원까지 그대로 반영(예: 10만원이면 100000). 고객 청구가 (VAT 10% 포함된 최종 금액). 매트릭스·BEP·수익률 산출의 기준값. 비워두면 모든 분석이 0으로 표시됩니다."
               />
               <p className="text-[10px] leading-relaxed" style={{ color: PAL.mute }}>
                 매트릭스·BEP·수익률 산출의 기준
@@ -3095,7 +3101,7 @@ function StopCard({
           {!stop.tiered ? (
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <NumField label="성인 가격 (통합)" value={stop.unifiedPrice} onChange={(n) => onPatch({ unifiedPrice: n })} step={1000} currency tooltip="천원 단위" />
+                <NumField label="성인 가격 (통합)" value={stop.unifiedPrice} onChange={(n) => onPatch({ unifiedPrice: n })} step={1} currency tooltip="원 단위 — 입력한 금액이 1원까지 그대로 반영됩니다 (예: 입장료 30,000원이면 30000 입력)." />
               </div>
               <label className="pb-1.5 flex items-center gap-1 text-[10px] whitespace-nowrap" style={{ color: PAL.inkSoft }} title="ON: 청소년·어린이·유아는 multiplier로 자동 할인 / OFF: 모든 tier 동일 가격">
                 <input type="checkbox" checked={stop.applyAgeTier} onChange={(e) => onPatch({ applyAgeTier: e.target.checked })} />
@@ -3104,9 +3110,9 @@ function StopCard({
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2">
-              <NumField label="성인" value={stop.adultPrice} onChange={(n) => onPatch({ adultPrice: n })} step={1000} currency tooltip="성인 1인 입장료·식대·체험비. 천원 단위. 통합 모드는 가중치 자동 적용, 구분 모드는 연령별 직접 입력." />
-              <NumField label="청소년" value={stop.youthPrice} onChange={(n) => onPatch({ youthPrice: n })} step={1000} currency tooltip="청소년(만 13~18세) 1인 가격. 천원 단위. 보통 성인의 70% 수준." />
-              <NumField label="어린이" value={stop.childPrice} onChange={(n) => onPatch({ childPrice: n })} step={1000} currency tooltip="어린이(만 4~12세) 1인 가격. 천원 단위. 보통 성인의 50% 수준. 유아(만 0~3세)는 보통 무료." />
+              <NumField label="성인" value={stop.adultPrice} onChange={(n) => onPatch({ adultPrice: n })} step={1} currency tooltip="성인 1인 입장료·식대·체험비. 원 단위 — 1원까지 그대로 반영(예: 30,000원→30000). 통합 모드는 가중치 자동 적용, 구분 모드는 연령별 직접 입력." />
+              <NumField label="청소년" value={stop.youthPrice} onChange={(n) => onPatch({ youthPrice: n })} step={1} currency tooltip="청소년(만 13~18세) 1인 가격. 원 단위 — 1원까지 그대로 반영. 보통 성인의 70% 수준." />
+              <NumField label="어린이" value={stop.childPrice} onChange={(n) => onPatch({ childPrice: n })} step={1} currency tooltip="어린이(만 4~12세) 1인 가격. 원 단위 — 1원까지 그대로 반영. 보통 성인의 50% 수준. 유아(만 0~3세)는 보통 무료." />
               <div>
                 <Label className="text-xs" style={{ color: PAL.mute }}>유아</Label>
                 <div className="flex h-9 items-center justify-center rounded-md border bg-white text-sm font-semibold" style={{ borderColor: PAL.line, color: PAL.mute }}>
@@ -3130,6 +3136,8 @@ function NumField({
   small,
   tooltip,
   currency,
+  min = 0,
+  max,
 }: {
   label: string;
   value: number;
@@ -3138,6 +3146,10 @@ function NumField({
   small?: boolean;
   tooltip?: string;
   currency?: boolean;
+  // 입력 하한(기본 0 — 인원·금액·일수 음수 차단). 위경도 등 음수 허용 필드는 min={-N} 지정.
+  min?: number;
+  // 입력 상한(옵션 — 박수 등 폭주 방지).
+  max?: number;
 }) {
   const id = useId();
   // draft 패턴 — value=0이면 빈 표시(0 prefix 박멸), focus 중에는 외부 sync 차단, blur 시 정규화
@@ -3177,21 +3189,23 @@ function NumField({
             setDraft('');
             onChange(0);
           } else {
-            // 정규화 (앞 0 제거 + Number → String)
-            const normalized = String(n);
+            // 정규화 + 범위 클램프 (음수·상한 초과 차단)
+            const clamped = Math.max(min, max !== undefined ? Math.min(max, n) : n);
+            const normalized = String(clamped);
             setDraft(normalized);
-            onChange(n);
+            onChange(clamped);
           }
         }}
         onChange={(e) => {
           let v = e.target.value;
-          // 숫자·소수점·마이너스만 허용 (빈 문자열 허용)
-          if (v === '' || /^-?\d*\.?\d*$/.test(v)) {
+          // 숫자·소수점 허용. 음수는 min<0(위경도 등)일 때만 — 인원·금액·일수(min=0)는 차단.
+          const numRe = min < 0 ? /^-?\d*\.?\d*$/ : /^\d*\.?\d*$/;
+          if (v === '' || numRe.test(v)) {
             // 맨 앞자리 0 실시간 제거 — "05"→"5", "007"→"7" (단 "0"·"0.5"는 유지)
             if (/^-?0\d/.test(v)) v = v.replace(/^(-?)0+(\d)/, '$1$2');
             setDraft(v);
             const n = Number(v);
-            if (!Number.isNaN(n) && v !== '' && v !== '-') onChange(n);
+            if (!Number.isNaN(n) && v !== '' && v !== '-') onChange(max !== undefined ? Math.min(max, n) : n);
             else if (v === '') onChange(0);
           }
         }}
