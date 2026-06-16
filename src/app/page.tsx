@@ -2,7 +2,7 @@
 // 글로벌 트렌드 파스텔×진한 팔레트 · 가로 레이아웃 · 인라인 툴팁 · 룰 기반 AI 요약 · 카카오맵
 'use client';
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -851,8 +851,10 @@ export default function BuilderPage() {
   }, [partyTotal, stops.length, vehicles.length, totalSeats, seatGap, salePrice, cost.costPerAdult, cost.zeroHeadcount, cost.partySharedTotal, channelAnalysis, channels, itinerary]);
 
   // ──────────────── 핸들러 ────────────────
-  const patchStop = (i: number, p: Partial<StopRow>) =>
-    setStops((rs) => rs.map((r, j) => (j === i ? { ...r, ...p } : r)));
+  // useCallback으로 안정 참조 고정 — StopCard React.memo와 함께 불필요 재렌더 차단.
+  // setStops 함수형 업데이트만 사용하므로 deps 빈 배열([])이 항상 최신 stops를 참조한다.
+  const patchStop = useCallback((i: number, p: Partial<StopRow>) =>
+    setStops((rs) => rs.map((r, j) => (j === i ? { ...r, ...p } : r))), []);
   // 지도 마커 드래그 종료 — 안정 참조(useCallback)로 KakaoMap 불필요 재생성을 차단한다.
   // setStops 함수형 업데이트만 쓰므로 deps 비워도 항상 최신 stops를 갱신한다.
   const handleMapDragEnd = useCallback((idx: number, lat: number, lng: number) => {
@@ -877,7 +879,7 @@ export default function BuilderPage() {
     }
     setPartyTiered(toTiered);
   };
-  const removeStop = (i: number) => setStops((rs) => rs.filter((_, j) => j !== i));
+  const removeStop = useCallback((i: number) => setStops((rs) => rs.filter((_, j) => j !== i)), []);
   const addStop = (t: StopType = 'sight', dayNumber = 1) =>
     setStops((rs) => (rs.length >= MAX_STOPS ? rs : [...rs, emptyStop(t, dayNumber)]));
   const resetStops = () => {
@@ -894,14 +896,14 @@ export default function BuilderPage() {
       return cp;
     });
   };
-  const moveStop = (i: number, dir: -1 | 1) =>
+  const moveStop = useCallback((i: number, dir: -1 | 1) =>
     setStops((rs) => {
       const j = i + dir;
       if (j < 0 || j >= rs.length) return rs;
       const cp = [...rs];
       [cp[i], cp[j]] = [cp[j], cp[i]];
       return cp;
-    });
+    }), []);
   // 차량 패치 — invariant: 실 탑승 최대 인원(maxBoard) ≤ 최대 탑승 인원(capacity)
   // 사용자가 maxBoard 를 capacity 초과로 입력하거나, capacity 를 maxBoard 미만으로 줄이면 자동 클램프
   const patchVehicle = (i: number, p: Partial<VehicleRow>) =>
@@ -2108,13 +2110,13 @@ export default function BuilderPage() {
                         </div>
                       )}
                       <StopCard
-                        index={i}
+                        idx={i}
                         total={stops.length}
                         stop={s}
                         schedule={time}
-                        onPatch={(p) => patchStop(i, p)}
-                        onMove={(d) => moveStop(i, d)}
-                        onRemove={() => removeStop(i)}
+                        onPatch={patchStop}
+                        onMove={moveStop}
+                        onRemove={removeStop}
                       />
                     </div>
                   );
@@ -2956,8 +2958,9 @@ function PlaceSearch({ onSelect }: { onSelect: (p: PlaceResult) => void }) {
 }
 
 // ──────────────── 일정 카드 ────────────────
-function StopCard({
-  index,
+// React.memo + idx 기반 안정 핸들러 — stops 배열 변경 시 해당 카드만 재렌더
+const StopCard = memo(function StopCard({
+  idx,
   total,
   stop,
   schedule,
@@ -2965,13 +2968,13 @@ function StopCard({
   onMove,
   onRemove,
 }: {
-  index: number;
+  idx: number;
   total: number;
   stop: StopRow;
   schedule: { arrive: number; depart: number; fixed?: boolean } | null;
-  onPatch: (p: Partial<StopRow>) => void;
-  onMove: (dir: -1 | 1) => void;
-  onRemove: () => void;
+  onPatch: (idx: number, p: Partial<StopRow>) => void;
+  onMove: (idx: number, dir: -1 | 1) => void;
+  onRemove: (idx: number) => void;
 }) {
   const meta = STOP_META[stop.stopType];
   return (
@@ -2981,12 +2984,12 @@ function StopCard({
     >
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-1.5">
-          <span className="text-xl font-black leading-none" style={{ color: meta.color }} title={`일정 순서 ${index + 1}`}>
-            {circleNum(index + 1)}
+          <span className="text-xl font-black leading-none" style={{ color: meta.color }} title={`일정 순서 ${idx + 1}`}>
+            {circleNum(idx + 1)}
           </span>
           <select
             value={stop.stopType}
-            onChange={(e) => onPatch({ stopType: e.target.value as StopType })}
+            onChange={(e) => onPatch(idx, { stopType: e.target.value as StopType })}
             className="h-7 rounded-full px-2.5 text-xs font-bold"
             style={{ color: meta.color, backgroundColor: meta.bg, border: 'none' }}
             title="이 카드의 유형 (출발·경유·관광·식사·체험·도착). 색상이 함께 바뀝니다. 출발·경유·도착은 가격이 없고, 관광·식사·체험만 가격 입력이 활성됩니다."
@@ -3000,9 +3003,9 @@ function StopCard({
           </select>
         </div>
         <div className="flex items-center gap-0.5 text-xs" style={{ color: PAL.mute }}>
-          <button type="button" disabled={index === 0} onClick={() => onMove(-1)} className="px-1 disabled:opacity-30" title="이 카드를 한 칸 앞으로 이동 (드래그로도 순서 변경 가능)" aria-label="앞으로 이동">←</button>
-          <button type="button" disabled={index === total - 1} onClick={() => onMove(1)} className="px-1 disabled:opacity-30" title="이 카드를 한 칸 뒤로 이동 (드래그로도 순서 변경 가능)" aria-label="뒤로 이동">→</button>
-          <button type="button" onClick={onRemove} className="px-1 font-bold" style={{ color: PAL.rose }} title="이 일정 카드를 영구 삭제 (되돌리기 없음)" aria-label="이 카드 삭제">×</button>
+          <button type="button" disabled={idx === 0} onClick={() => onMove(idx, -1)} className="px-1 disabled:opacity-30" title="이 카드를 한 칸 앞으로 이동 (드래그로도 순서 변경 가능)" aria-label="앞으로 이동">←</button>
+          <button type="button" disabled={idx === total - 1} onClick={() => onMove(idx, 1)} className="px-1 disabled:opacity-30" title="이 카드를 한 칸 뒤로 이동 (드래그로도 순서 변경 가능)" aria-label="뒤로 이동">→</button>
+          <button type="button" onClick={() => onRemove(idx)} className="px-1 font-bold" style={{ color: PAL.rose }} title="이 일정 카드를 영구 삭제 (되돌리기 없음)" aria-label="이 카드 삭제">×</button>
         </div>
       </div>
 
@@ -3037,7 +3040,7 @@ function StopCard({
                 <input
                   type="time"
                   value={stop.arriveFixed}
-                  onChange={(e) => onPatch({ arriveFixed: e.target.value })}
+                  onChange={(e) => onPatch(idx, { arriveFixed: e.target.value })}
                   className="h-6 rounded border px-1 text-[11px] font-bold tabular-nums"
                   style={{ borderColor: PAL.amber, color: PAL.amber }}
                   aria-label="고정 도착시각"
@@ -3045,7 +3048,7 @@ function StopCard({
                 />
                 <button
                   type="button"
-                  onClick={() => onPatch({ arriveFixed: '' })}
+                  onClick={() => onPatch(idx, { arriveFixed: '' })}
                   className="rounded border px-1.5 py-0.5 font-bold"
                   style={{ borderColor: PAL.line, color: PAL.mute }}
                   title="도착시각 고정 해제 — 자동 누적 계산으로 복귀"
@@ -3056,7 +3059,7 @@ function StopCard({
             ) : (
               <button
                 type="button"
-                onClick={() => onPatch({ arriveFixed: fmtTime(schedule.arrive % 1440) })}
+                onClick={() => onPatch(idx, { arriveFixed: fmtTime(schedule.arrive % 1440) })}
                 className="rounded border px-1.5 py-0.5 font-semibold"
                 style={{ borderColor: PAL.line, color: PAL.mute }}
                 title="현재 도착시각을 고정값으로 못박습니다 (공연 시작·식당 예약 등 시간 제약). 이후 카드는 이 시각부터 누적 재계산됩니다."
@@ -3072,20 +3075,20 @@ function StopCard({
       <Input
         type="text"
         value={stop.productName}
-        onChange={(e) => onPatch({ productName: e.target.value })}
+        onChange={(e) => onPatch(idx, { productName: e.target.value })}
         placeholder="상품명 (직접 입력 — 예: 경복궁 오전 관람)"
         className="h-9 text-base font-bold"
       />
       <Input
         type="text"
         value={stop.note}
-        onChange={(e) => onPatch({ note: e.target.value })}
+        onChange={(e) => onPatch(idx, { note: e.target.value })}
         placeholder="비고 (선택 — 메모·추가 설명)"
         className="h-9 text-sm"
       />
       <PlaceSearch
         onSelect={(p) =>
-          onPatch({
+          onPatch(idx, {
             address: p.address,
             latitude: Number(p.lat.toFixed(6)),
             longitude: Number(p.lng.toFixed(6)),
@@ -3095,38 +3098,38 @@ function StopCard({
       <Input
         type="text"
         value={stop.address}
-        onChange={(e) => onPatch({ address: e.target.value })}
+        onChange={(e) => onPatch(idx, { address: e.target.value })}
         placeholder="주소 (검색으로 자동 또는 직접 입력)"
         className="h-9 text-sm"
       />
       <div className="grid grid-cols-3 gap-1.5">
-        <NumField label="위도" value={stop.latitude === '' ? 0 : stop.latitude} onChange={(n) => onPatch({ latitude: n === 0 ? '' : n })} step={0.0001} small min={-180} tooltip="장소의 위도(33~39 한국 영역). 🔍 검색이나 지도 마커 드래그로 자동 채움. 비우면 동선·이동시간 계산에서 제외." />
-        <NumField label="경도" value={stop.longitude === '' ? 0 : stop.longitude} onChange={(n) => onPatch({ longitude: n === 0 ? '' : n })} step={0.0001} small min={-180} tooltip="장소의 경도(124~132 한국 영역). 🔍 검색이나 지도 마커 드래그로 자동 채움. 위도와 함께 있어야 이동시간 산출 가능." />
+        <NumField label="위도" value={stop.latitude === '' ? 0 : stop.latitude} onChange={(n) => onPatch(idx, { latitude: n === 0 ? '' : n })} step={0.0001} small min={-180} tooltip="장소의 위도(33~39 한국 영역). 🔍 검색이나 지도 마커 드래그로 자동 채움. 비우면 동선·이동시간 계산에서 제외." />
+        <NumField label="경도" value={stop.longitude === '' ? 0 : stop.longitude} onChange={(n) => onPatch(idx, { longitude: n === 0 ? '' : n })} step={0.0001} small min={-180} tooltip="장소의 경도(124~132 한국 영역). 🔍 검색이나 지도 마커 드래그로 자동 채움. 위도와 함께 있어야 이동시간 산출 가능." />
         <div className="rounded-md p-1" style={{ backgroundColor: PAL.tealPale }}>
-          <NumField label="⏱ 체류시간(분)" value={stop.stayMin} onChange={(n) => onPatch({ stayMin: n })} step={5} small tooltip="권장 체류시간 — 동선 합산에 사용. 청록색 강조" />
+          <NumField label="⏱ 체류시간(분)" value={stop.stayMin} onChange={(n) => onPatch(idx, { stayMin: n })} step={5} small tooltip="권장 체류시간 — 동선 합산에 사용. 청록색 강조" />
         </div>
       </div>
       {meta.hasPrice && (
         <div className="mt-1 space-y-2 rounded-lg p-2.5" style={{ backgroundColor: PAL.bg }}>
           <div className="flex items-center justify-between">
             <Label className="text-xs font-semibold" style={{ color: PAL.inkSoft }}>가격</Label>
-            <ModeToggle off="통합" on="구분" checked={stop.tiered} onChange={(b) => onPatch({ tiered: b })} />
+            <ModeToggle off="통합" on="구분" checked={stop.tiered} onChange={(b) => onPatch(idx, { tiered: b })} />
           </div>
           {!stop.tiered ? (
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <NumField label="성인 가격 (통합)" value={stop.unifiedPrice} onChange={(n) => onPatch({ unifiedPrice: n })} step={1} currency tooltip="원 단위 — 입력한 금액이 1원까지 그대로 반영됩니다 (예: 입장료 30,000원이면 30000 입력)." />
+                <NumField label="성인 가격 (통합)" value={stop.unifiedPrice} onChange={(n) => onPatch(idx, { unifiedPrice: n })} step={1} currency tooltip="원 단위 — 입력한 금액이 1원까지 그대로 반영됩니다 (예: 입장료 30,000원이면 30000 입력)." />
               </div>
               <label className="pb-1.5 flex items-center gap-1 text-[10px] whitespace-nowrap" style={{ color: PAL.inkSoft }} title="ON: 청소년·어린이·유아는 multiplier로 자동 할인 / OFF: 모든 tier 동일 가격">
-                <input type="checkbox" checked={stop.applyAgeTier} onChange={(e) => onPatch({ applyAgeTier: e.target.checked })} />
+                <input type="checkbox" checked={stop.applyAgeTier} onChange={(e) => onPatch(idx, { applyAgeTier: e.target.checked })} />
                 연령가중
               </label>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2">
-              <NumField label="성인" value={stop.adultPrice} onChange={(n) => onPatch({ adultPrice: n })} step={1} currency tooltip="성인 1인 입장료·식대·체험비. 원 단위 — 1원까지 그대로 반영(예: 30,000원→30000). 통합 모드는 가중치 자동 적용, 구분 모드는 연령별 직접 입력." />
-              <NumField label="청소년" value={stop.youthPrice} onChange={(n) => onPatch({ youthPrice: n })} step={1} currency tooltip="청소년(만 13~18세) 1인 가격. 원 단위 — 1원까지 그대로 반영. 보통 성인의 70% 수준." />
-              <NumField label="어린이" value={stop.childPrice} onChange={(n) => onPatch({ childPrice: n })} step={1} currency tooltip="어린이(만 4~12세) 1인 가격. 원 단위 — 1원까지 그대로 반영. 보통 성인의 50% 수준. 유아(만 0~3세)는 보통 무료." />
+              <NumField label="성인" value={stop.adultPrice} onChange={(n) => onPatch(idx, { adultPrice: n })} step={1} currency tooltip="성인 1인 입장료·식대·체험비. 원 단위 — 1원까지 그대로 반영(예: 30,000원→30000). 통합 모드는 가중치 자동 적용, 구분 모드는 연령별 직접 입력." />
+              <NumField label="청소년" value={stop.youthPrice} onChange={(n) => onPatch(idx, { youthPrice: n })} step={1} currency tooltip="청소년(만 13~18세) 1인 가격. 원 단위 — 1원까지 그대로 반영. 보통 성인의 70% 수준." />
+              <NumField label="어린이" value={stop.childPrice} onChange={(n) => onPatch(idx, { childPrice: n })} step={1} currency tooltip="어린이(만 4~12세) 1인 가격. 원 단위 — 1원까지 그대로 반영. 보통 성인의 50% 수준. 유아(만 0~3세)는 보통 무료." />
               <div>
                 <Label className="text-xs" style={{ color: PAL.mute }}>유아</Label>
                 <div className="flex h-9 items-center justify-center rounded-md border bg-white text-sm font-semibold" style={{ borderColor: PAL.line, color: PAL.mute }}>
@@ -3139,7 +3142,7 @@ function StopCard({
       )}
     </div>
   );
-}
+});
 
 // ──────────────── 작은 컴포넌트 ────────────────
 function NumField({
