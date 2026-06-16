@@ -209,19 +209,24 @@ export function deleteFromLibrary(id: string): void {
 }
 
 // 구 슬롯(slot-0/1/2)에 남은 데이터를 보관함으로 1회 이전 후 슬롯 키 삭제. 이전 건수 반환.
+// writeLibrary 성공 이후에만 슬롯 삭제 — 용량 초과 시 데이터 손실 방지.
 export function migrateSlotsToLibrary(): number {
   if (typeof window === "undefined") return 0;
   const items = loadLibrary();
+  const slotsToClear: number[] = [];
   let migrated = 0;
   for (let slot = 0; slot < 3; slot++) {
+    if (items.length >= LIBRARY_MAX) break;
     const data = loadState(slot);
     if (!data) continue;
     const summary = summaryFromData(data);
     const name = summary.packageName.trim() || `슬롯 ${slot + 1} (이전)`;
     items.unshift({ id: newId(), name, savedAt: new Date().toISOString(), summary, data });
-    clearState(slot);
+    slotsToClear.push(slot);
     migrated++;
   }
-  if (migrated > 0) writeLibrary(items);
+  if (migrated > 0 && writeLibrary(items)) {
+    for (const slot of slotsToClear) clearState(slot);
+  }
   return migrated;
 }

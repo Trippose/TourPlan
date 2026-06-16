@@ -104,6 +104,14 @@ describe('STEP M1~M5 — 캠페인 누적 투영', () => {
     expect(r.cumulativeMarginRate).toBe(11.1);
   });
 
+  it('초과달성(scenarioPax>targetPax): missRiskPercent 음수 — 0으로 클램프하지 않음', () => {
+    // avgAchievable=20(7출발×20), avgPaxPerDepart=10(목표70/7) → (10-20)/20 × 100 = -50%
+    const r = projectCampaign(makeCampaign({ targetPax: 70 }));
+    expect(r.missRiskPercent).toBeLessThan(0);
+    expect(r.scenarioPax).toBe(140); // 7 × 20
+    expect(r.avgPaxPerDepart).toBe(10);
+  });
+
   it('휴일 강행(+20% 단가): holiday 시즌 단가 180000', () => {
     const r = projectCampaign(
       makeCampaign({

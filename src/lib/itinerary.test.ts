@@ -70,6 +70,24 @@ describe('computeItinerary', () => {
   });
 });
 
+describe('totalMin 이중 Math.round 제거 — 정수 일관성', () => {
+  it('소수 travelFromPrevMin이 있어도 totalMin은 정수', () => {
+    // travelFromPrevMin=7.6 → 그대로 누적되면 totalMin에 소수가 들어갈 수 있다(이중 round 버그).
+    // 수동 입력값은 정수(사용자가 숫자 입력)이므로 소수가 들어가는 경우는 자동 추정에서 발생.
+    // 좌표 기반 자동 추정 leg: Math.round 한 번만 적용되어야 한다.
+    const r = computeItinerary([
+      { recommendedStayMin: 60, latitude: 37.5665, longitude: 126.9780 },  // 서울시청
+      { recommendedStayMin: 30, latitude: 37.5796, longitude: 126.9770 },  // 경복궁
+      { recommendedStayMin: 45, latitude: 37.5640, longitude: 126.9800 },  // 명동
+    ]);
+    // totalMin = totalStayMin + totalTravelMin — 모두 정수여야 한다
+    expect(Number.isInteger(r.totalMin)).toBe(true);
+    expect(Number.isInteger(r.totalTravelMin)).toBe(true);
+    // totalMin = 합산이 일치
+    expect(r.totalMin).toBe(r.totalStayMin + r.totalTravelMin);
+  });
+});
+
 describe('formatMin', () => {
   it('60분 = "1시간"', () => expect(formatMin(60)).toBe('1시간'));
   it('90분 = "1시간 30분"', () => expect(formatMin(90)).toBe('1시간 30분'));

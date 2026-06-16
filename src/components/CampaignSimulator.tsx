@@ -331,14 +331,16 @@ export function CampaignSimulator({ perPersonItems, partySharedTotal, salePrice 
               </div>
               <div
                 className="rounded-xl border-2 bg-white p-3"
-                style={{ borderColor: result.missRiskPercent > 30 ? PAL.rose : result.missRiskPercent > 10 ? PAL.amber : PAL.emerald }}
+                style={{ borderColor: result.missRiskPercent < 0 ? PAL.emerald : result.missRiskPercent > 30 ? PAL.rose : result.missRiskPercent > 10 ? PAL.amber : PAL.emerald }}
               >
-                <div className="text-xs font-bold" style={{ color: PAL.mute }}>목표 미달 위험</div>
+                <div className="text-xs font-bold" style={{ color: PAL.mute }}>
+                  {result.missRiskPercent < 0 ? '목표 초과 달성' : '목표 미달 위험'}
+                </div>
                 <div
                   className="mt-1 text-2xl font-black tabular-nums"
-                  style={{ color: result.missRiskPercent > 30 ? PAL.rose : result.missRiskPercent > 10 ? PAL.amber : PAL.emerald }}
+                  style={{ color: result.missRiskPercent < 0 ? PAL.emerald : result.missRiskPercent > 30 ? PAL.rose : result.missRiskPercent > 10 ? PAL.amber : PAL.emerald }}
                 >
-                  {result.missRiskPercent}%
+                  {result.missRiskPercent < 0 ? `+${Math.abs(result.missRiskPercent)}%` : `${result.missRiskPercent}%`}
                 </div>
                 <div className="mt-0.5 text-xs font-semibold" style={{ color: PAL.inkSoft }}>달성 예상 {result.scenarioPax}명</div>
               </div>

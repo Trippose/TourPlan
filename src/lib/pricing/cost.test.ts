@@ -171,6 +171,28 @@ describe('보조 함수', () => {
   });
 });
 
+describe('zeroHeadcount — nTotal=0 경고 플래그', () => {
+  it('nTotal=0 + partyShared>0 → zeroHeadcount=true, perPersonShared=0', () => {
+    const r = computeCost(
+      makeInput({
+        party: {
+          mode: 'simple',
+          tiers: { adult: { count: 0, multiplier: 1.0 } },
+        },
+        partyShared: [{ categorySlug: 'vehicle', totalKrw: 500000 }],
+      }),
+    );
+    expect(r.nTotal).toBe(0);
+    expect(r.zeroHeadcount).toBe(true);
+    expect(r.perPersonShared).toBe(0);
+  });
+
+  it('nTotal>0 → zeroHeadcount=false (정상 경우)', () => {
+    const r = computeCost(makeInput());
+    expect(r.zeroHeadcount).toBe(false);
+  });
+});
+
 describe('priceMode tiered — tier별 직접 가격', () => {
   it('tiered면 multiplier 무시하고 pricesByTier를 직접 사용', () => {
     const r = computeCost(

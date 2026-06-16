@@ -823,6 +823,12 @@ export default function BuilderPage() {
         }
       }
     }
+    if (cost.zeroHeadcount && cost.partySharedTotal > 0) {
+      out.push({
+        level: 'warn',
+        text: '인원 0명 — 공통비(차량·가이드)가 1인 원가에 미분배됨',
+      });
+    }
     if (itinerary.totalMin > 0) {
       const h = itinerary.totalMin / 60;
       if (h > 12)
@@ -842,7 +848,7 @@ export default function BuilderPage() {
       });
     }
     return out;
-  }, [partyTotal, stops.length, vehicles.length, totalSeats, seatGap, salePrice, cost.costPerAdult, channelAnalysis, channels, itinerary]);
+  }, [partyTotal, stops.length, vehicles.length, totalSeats, seatGap, salePrice, cost.costPerAdult, cost.zeroHeadcount, cost.partySharedTotal, channelAnalysis, channels, itinerary]);
 
   // ──────────────── 핸들러 ────────────────
   const patchStop = (i: number, p: Partial<StopRow>) =>
@@ -1447,6 +1453,7 @@ export default function BuilderPage() {
                   max={365}
                   className="h-8 w-20 rounded border bg-white px-2 text-right text-sm font-bold tabular-nums"
                   style={{ borderColor: PAL.line }}
+                  aria-label="롱스테이 박수 6~365"
                   title="롱스테이 박수 직접 입력"
                 />
               )}
@@ -2051,6 +2058,7 @@ export default function BuilderPage() {
                                   borderColor: s.travelLocked ? PAL.amber : (typeof s.travelFromPrevMin === 'number' ? PAL.rose : PAL.line),
                                   color: s.travelLocked ? PAL.amber : (typeof s.travelFromPrevMin === 'number' ? PAL.rose : PAL.inkSoft),
                                 }}
+                                aria-label="이동시간 분 직접 입력 — 비우면 자동 추정으로 복귀"
                                 title={typeof s.travelFromPrevMin === 'number'
                                   ? '수동 입력값 (직접 입력) — 비우면 자동 추정으로 복귀'
                                   : `자동 추정값: ${leg.minutes !== null ? Math.round(leg.minutes) + '분' : '좌표 필요'}. 실제 차량 시간을 직접 입력하면 우선 적용`}
@@ -2078,7 +2086,9 @@ export default function BuilderPage() {
                                 }}
                                 title={s.travelLocked
                                   ? '이동시간 고정됨 — 카카오 실시간 교통 갱신에서 제외. 클릭하면 실시간 반영으로 전환'
-                                  : '실시간 — 카카오 교통 갱신 대상. 클릭하면 현재 값으로 고정'}
+                                  : parseHHMM(s.arriveFixed) !== null
+                                    ? '도착시각 고정 — 이 카드는 도착시각이 고정되어 있어 카카오 갱신 제외 대상입니다. 클릭하면 이동시간도 고정'
+                                    : '실시간 — 카카오 교통 갱신 대상. 클릭하면 현재 값으로 고정'}
                                 aria-label={s.travelLocked ? '이동시간 고정 해제' : '이동시간 고정'}
                                 aria-pressed={s.travelLocked}
                               >
@@ -3090,8 +3100,8 @@ function StopCard({
         className="h-9 text-sm"
       />
       <div className="grid grid-cols-3 gap-1.5">
-        <NumField label="위도" value={stop.latitude === '' ? 0 : stop.latitude} onChange={(n) => onPatch({ latitude: n === 0 ? '' : n })} step={0.0001} small tooltip="장소의 위도(33~39 한국 영역). 🔍 검색이나 지도 마커 드래그로 자동 채움. 비우면 동선·이동시간 계산에서 제외." />
-        <NumField label="경도" value={stop.longitude === '' ? 0 : stop.longitude} onChange={(n) => onPatch({ longitude: n === 0 ? '' : n })} step={0.0001} small tooltip="장소의 경도(124~132 한국 영역). 🔍 검색이나 지도 마커 드래그로 자동 채움. 위도와 함께 있어야 이동시간 산출 가능." />
+        <NumField label="위도" value={stop.latitude === '' ? 0 : stop.latitude} onChange={(n) => onPatch({ latitude: n === 0 ? '' : n })} step={0.0001} small min={-180} tooltip="장소의 위도(33~39 한국 영역). 🔍 검색이나 지도 마커 드래그로 자동 채움. 비우면 동선·이동시간 계산에서 제외." />
+        <NumField label="경도" value={stop.longitude === '' ? 0 : stop.longitude} onChange={(n) => onPatch({ longitude: n === 0 ? '' : n })} step={0.0001} small min={-180} tooltip="장소의 경도(124~132 한국 영역). 🔍 검색이나 지도 마커 드래그로 자동 채움. 위도와 함께 있어야 이동시간 산출 가능." />
         <div className="rounded-md p-1" style={{ backgroundColor: PAL.tealPale }}>
           <NumField label="⏱ 체류시간(분)" value={stop.stayMin} onChange={(n) => onPatch({ stayMin: n })} step={5} small tooltip="권장 체류시간 — 동선 합산에 사용. 청록색 강조" />
         </div>

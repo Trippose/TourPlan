@@ -93,11 +93,12 @@ export function computeItinerary(
       legs.push({ fromIndex: i - 1, toIndex: i, km, minutes: min });
     }
   }
+  const roundedTravel = Math.round(totalTravelMin);
   return {
     legs,
     totalStayMin,
-    totalTravelMin: Math.round(totalTravelMin),
-    totalMin: totalStayMin + Math.round(totalTravelMin),
+    totalTravelMin: roundedTravel,
+    totalMin: totalStayMin + roundedTravel,
   };
 }
 

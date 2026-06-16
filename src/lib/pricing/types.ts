@@ -126,6 +126,8 @@ export interface CostResult {
   costPerAdult: number; // 1단계 핵심 출력 (마진0·VAT포함)
   groupCostKrw: number; // Σ count × tierCost
   groupFinalKrw: number; // Σ count × finalKrw (참고가)
+  // nTotal=0(인원 전무)이면 true — 공통비(차량·가이드)가 1인 원가에 미분배됨을 UI에 알림.
+  zeroHeadcount: boolean;
 }
 
 // ── STEP 9~14 채널·BEP·OTA ──────────────────────────────────────

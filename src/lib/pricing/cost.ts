@@ -137,5 +137,6 @@ export function computeCost(input: CalculationInput): CostResult {
     costPerAdult: byTier.adult ? byTier.adult.tierCost : 0,
     groupCostKrw: Math.round(groupCostKrw),
     groupFinalKrw: Math.round(groupFinalKrw),
+    zeroHeadcount: nTotal === 0,
   };
 }

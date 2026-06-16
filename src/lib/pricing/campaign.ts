@@ -121,11 +121,7 @@ export function projectCampaign(input: CampaignInput): CampaignResult {
   const avgAchievable = departCount > 0 ? scenarioPax / departCount : 0;
   const missRiskPercent =
     avgAchievable > 0
-      ? Math.max(
-          0,
-          Math.round(((avgPaxPerDepart - avgAchievable) / avgAchievable) * 1000) /
-            10,
-        )
+      ? Math.round(((avgPaxPerDepart - avgAchievable) / avgAchievable) * 1000) / 10
       : 0;
 
   return {
