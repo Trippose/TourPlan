@@ -183,7 +183,6 @@ export function KakaoMap({ stops, onDragEnd, shape = 'wide' }: KakaoMapProps) {
           });
         };
         window.kakao.maps.event.addListener(map, 'zoom_changed', applyAntiCollision);
-        window.kakao.maps.event.addListener(map, 'idle', applyAntiCollision);
 
         // 각 구간(leg)별로 별도 Polyline — 다른 색상
         for (let i = 0; i < path.length - 1; i++) {
@@ -198,6 +197,7 @@ export function KakaoMap({ stops, onDragEnd, shape = 'wide' }: KakaoMapProps) {
           });
         }
         map.setBounds(bounds);
+        applyAntiCollision(); // 초기 1회 충돌회피 (idle 리스너 제거 대체)
       });
     };
 

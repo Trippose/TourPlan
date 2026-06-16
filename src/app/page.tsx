@@ -428,6 +428,8 @@ export default function BuilderPage() {
       if (typeof data.startTime === 'string') setStartTime(data.startTime);
       if (typeof data.salePrice === 'number') setSalePrice(data.salePrice);
       if (Array.isArray(data.channels) && data.channels.length > 0) setChannels(data.channels.map(sanitizeChannel));
+      if (typeof data.productType === 'string') setProductType(data.productType as typeof productType);
+      if (typeof data.nights === 'number') setNights(data.nights);
       setStorageMsg('✓ 공유 링크에서 입력값 복원됨');
       setTimeout(() => setStorageMsg(null), 3000);
       // fragment 클리어 (이중 적용 방지)
@@ -626,6 +628,7 @@ export default function BuilderPage() {
       setTimeout(() => setStorageMsg(null), 3000);
       return;
     }
+    if (typeof window !== 'undefined' && !window.confirm('현재 작업 중인 견적을 보관함 항목으로 교체합니다. 저장하지 않은 변경은 사라집니다. 계속할까요?')) return;
     applyPayload((item.data ?? {}) as Record<string, unknown>);
     setShowLibraryModal(false);
     setStorageMsg(`✓ "${item.name}" 불러옴 (현재 작업을 대체함)`);
@@ -900,6 +903,7 @@ export default function BuilderPage() {
       rs.map((r, j) => {
         if (j !== i) return r;
         const next = { ...r, ...p };
+        next.maxBoard = Math.max(0, next.maxBoard);
         if (next.capacity > 0 && next.maxBoard > next.capacity) {
           next.maxBoard = next.capacity;
         }
@@ -1301,7 +1305,7 @@ export default function BuilderPage() {
           open={showShareModal}
           onClose={() => setShowShareModal(false)}
           payload={{
-            packageName, partyTiered, totalPax, adult, youth, child, infant,
+            packageName, productType, nights, partyTiered, totalPax, adult, youth, child, infant,
             vehicles, guides, stops, startTime, salePrice, channels,
           }}
         />
