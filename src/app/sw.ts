@@ -58,7 +58,7 @@ const serwist = new Serwist({
       }),
     },
     {
-      matcher: /^https:\/\/(t1|map)\.daumcdn\.net\/.*/i,
+      matcher: /^https:\/\/(t1|map|mts)\.daumcdn\.net\/.*/i,
       handler: new StaleWhileRevalidate({
         cacheName: "kakao-map-tiles",
         plugins: [
