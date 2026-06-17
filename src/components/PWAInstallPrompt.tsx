@@ -42,6 +42,16 @@ export function PWAInstallPrompt() {
     };
   }, []);
 
+  // iOS 힌트 dialog — ESC 키로 닫기
+  useEffect(() => {
+    if (!showIosHint) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowIosHint(false);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showIosHint]);
+
   if (installed) return null;
 
   // iOS — beforeinstallprompt 미발화. 안내 토글
@@ -62,6 +72,8 @@ export function PWAInstallPrompt() {
         {showIosHint && (
           <div
             role="dialog"
+            aria-modal="true"
+            aria-label="iOS 홈 화면 추가 안내"
             className="absolute right-2 top-14 z-50 w-72 rounded-xl border bg-white p-3 text-xs shadow-lg dark:bg-neutral-900 dark:text-neutral-100"
             style={{ borderColor: 'var(--border, #E7E2D5)' }}
           >

@@ -428,11 +428,13 @@ export async function POST(req: NextRequest) {
   // ANTHROPIC_API_KEY 미설정 → 룰 폴백 (no-silent-fallback.md — mode·provider 명시)
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey || apiKey.length < 20) {
+    // 환경변수명·경로는 서버 로그에만, 클라이언트에는 중립 문자열만 노출
+    console.warn('[chat] ANTHROPIC_API_KEY 미설정 또는 길이 부족 — .env.local에 추가하면 AI 응답 활성화');
     return NextResponse.json({
       success: true,
       mode: 'rule-fallback',
       provider: 'rule-engine',
-      reason: 'ANTHROPIC_API_KEY 미설정 — 운영자가 .env.local에 추가하면 AI 응답 활성화',
+      reason: 'AI 기능 미활성 상태',
       reply: fallbackReply(lastUserMsg.content),
     });
   }
@@ -494,9 +496,10 @@ export async function POST(req: NextRequest) {
               },
             });
           } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
+            // 서버 로그에만 원인 기록, 클라이언트에는 중립 문자열만 노출
+            console.error('[chat/stream] Anthropic 스트림 실패:', err instanceof Error ? err.message : String(err));
             // 스트리밍 도중 실패 → 룰 폴백 메시지를 한 번에 전송
-            sse('meta', { mode: 'rule-fallback', provider: 'rule-engine', reason: `Anthropic 스트림 실패: ${msg.substring(0, 200)}` });
+            sse('meta', { mode: 'rule-fallback', provider: 'rule-engine', reason: 'AI 서비스 일시 오류' });
             sse('delta', { text: fallbackReply(lastUserMsg.content) });
             sse('done', {});
           } finally {
@@ -532,13 +535,14 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err) {
+    // 서버 로그에만 원인 기록, 클라이언트에는 중립 문자열만 노출 (에러 메시지 노출 방지)
+    console.error('[chat] Anthropic API 호출 실패:', err instanceof Error ? err.message : String(err));
     // API 호출 실패 → 룰 폴백 + 실패 사실 투명 노출 (no-silent-fallback.md)
-    const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({
       success: true,
       mode: 'rule-fallback',
       provider: 'rule-engine',
-      reason: `Anthropic API 호출 실패: ${msg.substring(0, 200)}`,
+      reason: 'AI 서비스 일시 오류',
       reply: fallbackReply(lastUserMsg.content),
     });
   }

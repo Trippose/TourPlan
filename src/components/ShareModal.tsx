@@ -3,7 +3,7 @@
 // QR은 qrcode 패키지로 클라이언트 PNG(data URL) 생성 — 외부 CDN 의존 0
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 
 const PAL = {
@@ -43,8 +43,27 @@ function encodePayload(payload: Record<string, unknown>): string {
 export function ShareModal({ open, onClose, payload }: Props) {
   const [url, setUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copyErr, setCopyErr] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [qrErr, setQrErr] = useState<string | null>(null);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 모달 닫힐 때 pending 타이머 정리
+  useEffect(() => {
+    if (!open) {
+      if (copiedTimerRef.current !== null) {
+        clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = null;
+      }
+    }
+  }, [open]);
+
+  // 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -54,6 +73,7 @@ export function ShareModal({ open, onClose, payload }: Props) {
     const fullUrl = `${base}#q=${encoded}`;
     setUrl(fullUrl);
     setCopied(false);
+    setCopyErr(null);
     setQrErr(null);
     // QR PNG data URL 클라이언트 생성 (외부 CDN 의존 0 + dangerouslySetInnerHTML 회피)
     // data:image/png;base64,... 형식이라 <img src>에 안전하게 주입 가능 (XSS 벡터 0)
@@ -88,9 +108,14 @@ export function ShareModal({ open, onClose, payload }: Props) {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // 실패 — 사용자가 수동 복사
+      setCopyErr(null);
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => {
+        setCopied(false);
+        copiedTimerRef.current = null;
+      }, 2000);
+    } catch (err) {
+      setCopyErr(`복사 실패 — 직접 선택 후 Ctrl+C 로 복사하세요 (${err instanceof Error ? err.message : '클립보드 권한 없음'})`);
     }
   };
 
@@ -150,6 +175,11 @@ export function ShareModal({ open, onClose, payload }: Props) {
               {copied ? '✓ 복사됨' : '📋 복사'}
             </button>
           </div>
+          {copyErr && (
+            <p role="alert" className="mt-1 text-[11px] font-semibold" style={{ color: '#C0306B' }}>
+              ⚠ {copyErr}
+            </p>
+          )}
         </div>
 
         <div className="mb-3">

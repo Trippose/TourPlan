@@ -14,9 +14,14 @@ const DB_NAME = 'tour-pricing-chat';
 const DB_VERSION = 1;
 const STORE = 'messages';
 
+// 모듈 수준 싱글턴 — 호출마다 새 IDBDatabase를 열지 않도록 1회만 열고 재사용
+let _dbPromise: Promise<IDBDatabase> | null = null;
+
 function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (_dbPromise) return _dbPromise;
+  _dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
+      _dbPromise = null;
       reject(new Error('IndexedDB unavailable'));
       return;
     }
@@ -28,9 +33,19 @@ function openDb(): Promise<IDBDatabase> {
         store.createIndex('ts', 'ts', { unique: false });
       }
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      // 예기치 않은 버전 변경·강제 close 시 캐시 무효화
+      db.onclose = () => { _dbPromise = null; };
+      db.onversionchange = () => { db.close(); _dbPromise = null; };
+      resolve(db);
+    };
+    req.onerror = () => {
+      _dbPromise = null;
+      reject(req.error);
+    };
   });
+  return _dbPromise;
 }
 
 export async function chatDbSave(msg: StoredMessage): Promise<number | null> {

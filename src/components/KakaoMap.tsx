@@ -197,7 +197,14 @@ export function KakaoMap({ stops, onDragEnd, shape = 'wide' }: KakaoMapProps) {
           });
         }
         map.setBounds(bounds);
-        applyAntiCollision(); // 초기 1회 충돌회피 (idle 리스너 제거 대체)
+        // setBounds 완료(idle) 후 1회만 충돌 계산 — setBounds 전 applyAntiCollision 호출 시
+        // 이전 줌 기준 픽셀 좌표로 계산해 충돌 판정이 오판되는 것을 방지한다.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const onIdle = function onIdle() {
+          window.kakao.maps.event.removeListener(map, 'idle', onIdle);
+          applyAntiCollision();
+        };
+        window.kakao.maps.event.addListener(map, 'idle', onIdle);
       });
     };
 

@@ -39,6 +39,11 @@ function checkRate(ip: string): { ok: boolean; retryAfter?: number } {
   }
   bucket.push(now);
   loginBuckets.set(ip, bucket);
+  // 메모리 누수 방지 — 추적 IP가 1000개를 넘으면 가장 오래된 항목 1건 제거
+  if (loginBuckets.size > 1000) {
+    const firstKey = loginBuckets.keys().next().value;
+    if (firstKey) loginBuckets.delete(firstKey);
+  }
   return { ok: true };
 }
 

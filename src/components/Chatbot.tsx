@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { chatDbSave, chatDbLoadAll, chatDbClear, type StoredMessage } from '@/lib/chat-db';
 
 interface Message {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
   meta?: { mode?: string; provider?: string; ts?: number };
@@ -104,6 +105,14 @@ interface Props {
 const HISTORY_KEY = 'tour-pricing-chat-history';
 const MAX_HISTORY = 50;
 
+// 메시지 고유 ID 생성 — crypto.randomUUID 지원 브라우저 우선, 폴백은 Date.now 기반
+function genMsgId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 function loadHistory(): Message[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -111,7 +120,9 @@ function loadHistory(): Message[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((m) => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'));
+    return parsed
+      .filter((m) => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'))
+      .map((m) => ({ ...m, id: m.id ?? genMsgId() }));
   } catch {
     return [];
   }
@@ -136,13 +147,16 @@ export function Chatbot({ context, openSignal }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null); // 드롭다운 컨테이너 — 외부 클릭 감지용
+  const abortRef = useRef<AbortController | null>(null); // SSE fetch abort 제어
 
   // 마운트 시 영속 복원 — IndexedDB 우선, 실패 시 localStorage 폴백
+  // 언마운트 시 진행 중인 fetch abort
   useEffect(() => {
     (async () => {
       const fromDb = await chatDbLoadAll();
       if (fromDb.length > 0) {
         const converted: Message[] = fromDb.map((m) => ({
+          id: genMsgId(),
           role: m.role,
           content: m.content,
           meta: { mode: m.mode, provider: m.provider, ts: m.ts },
@@ -153,6 +167,9 @@ export function Chatbot({ context, openSignal }: Props) {
       const restored = loadHistory();
       if (restored.length > 0) setMessages(restored);
     })();
+    return () => {
+      abortRef.current?.abort();
+    };
   }, []);
 
   // 메시지 변경 시 localStorage 저장 (즉시 폴백) + IndexedDB 비동기 저장 (무한 영속)
@@ -217,7 +234,12 @@ export function Chatbot({ context, openSignal }: Props) {
     const trimmed = text.trim();
     if (!trimmed || loading || streaming) return;
 
-    const userMsg: Message = { role: 'user', content: trimmed, meta: { ts: Date.now() } };
+    // 이전 요청 abort 후 새 컨트롤러 생성
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const userMsg: Message = { id: genMsgId(), role: 'user', content: trimmed, meta: { ts: Date.now() } };
     const next = [...messages, userMsg];
     setMessages(next);
     setInput('');
@@ -235,6 +257,7 @@ export function Chatbot({ context, openSignal }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payload,
+        signal: controller.signal,
       });
 
       if (res.status === 429) {
@@ -262,12 +285,13 @@ export function Chatbot({ context, openSignal }: Props) {
         setStreaming(true);
         let accumulated = '';
         let receivedMode: 'ai' | 'rule-fallback' = 'ai';
-        let receivedProvider = 'claude-opus-4-8';
+        let receivedProvider = '';
 
         // assistant placeholder 1건 추가 후 스트리밍 토큰으로 in-place 갱신
+        const placeholderId = genMsgId();
         setMessages((prev) => [
           ...prev,
-          { role: 'assistant', content: '', meta: { mode: 'ai', provider: receivedProvider, ts: Date.now() } },
+          { id: placeholderId, role: 'assistant', content: '', meta: { mode: 'ai', provider: '', ts: Date.now() } },
         ]);
 
         const reader = res.body.getReader();
@@ -320,6 +344,7 @@ export function Chatbot({ context, openSignal }: Props) {
             }
           }
         } finally {
+          reader.cancel().catch(() => {});
           setStreaming(false);
         }
         return;
@@ -333,6 +358,7 @@ export function Chatbot({ context, openSignal }: Props) {
         return;
       }
       const assistantMsg: Message = {
+        id: genMsgId(),
         role: 'assistant',
         content: data.reply,
         meta: { mode: data.mode, provider: data.provider, ts: Date.now() },
@@ -397,7 +423,7 @@ export function Chatbot({ context, openSignal }: Props) {
         style={{ borderColor: 'var(--border, #E7E2D5)', minWidth: 36, minHeight: 36, color: '#6E37CC' }}
         aria-label="AI 도우미 열기"
         aria-expanded={open}
-        title="AI 투어 단가 도우미 — Claude Opus 4.8 기반 (Anthropic, 워터트리 정책상 0.1% 품질 우선)"
+        title="AI 투어 단가 도우미"
       >
         <span aria-hidden>🤖</span>
         <span className="hidden sm:inline">도우미</span>
@@ -490,9 +516,9 @@ export function Chatbot({ context, openSignal }: Props) {
                 </>
               )}
 
-              {messages.map((m, i) => (
+              {messages.map((m) => (
                 <div
-                  key={i}
+                  key={m.id}
                   className={`mb-3 ${m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}`}
                 >
                   <div

@@ -57,6 +57,7 @@ import {
 } from '@/lib/storage';
 
 // ──────────────── 상수 ────────────────
+const VALID_PRODUCT_TYPES = new Set(['', 'half-day', 'full-day', '2d1n', '3d2n', '4d3n', '5d4n', '6d5n', 'longstay']);
 const MAX_STOPS = 30;
 const MAX_VEHICLES = 10;
 const MAX_GUIDES = 10;
@@ -417,19 +418,25 @@ export default function BuilderPage() {
       const data = JSON.parse(json);
       if (typeof data.packageName === 'string') setPackageName(data.packageName);
       if (typeof data.partyTiered === 'boolean') setPartyTiered(data.partyTiered);
-      if (typeof data.totalPax === 'number') setTotalPax(data.totalPax);
-      if (typeof data.adult === 'number') setAdult(data.adult);
-      if (typeof data.youth === 'number') setYouth(data.youth);
-      if (typeof data.child === 'number') setChild(data.child);
-      if (typeof data.infant === 'number') setInfant(data.infant);
+      if (typeof data.totalPax === 'number') setTotalPax(finiteNum(data.totalPax));
+      if (typeof data.adult === 'number') setAdult(finiteNum(data.adult));
+      if (typeof data.youth === 'number') setYouth(finiteNum(data.youth));
+      if (typeof data.child === 'number') setChild(finiteNum(data.child));
+      if (typeof data.infant === 'number') setInfant(finiteNum(data.infant));
       if (Array.isArray(data.vehicles)) setVehicles(data.vehicles.map(sanitizeVehicle));
       if (Array.isArray(data.guides)) setGuides(data.guides.map(sanitizeGuide));
       if (Array.isArray(data.stops)) setStops(data.stops.map(sanitizeStop));
       if (typeof data.startTime === 'string') setStartTime(data.startTime);
-      if (typeof data.salePrice === 'number') setSalePrice(data.salePrice);
+      if (typeof data.salePrice === 'number') setSalePrice(Math.max(0, finiteNum(data.salePrice)));
       if (Array.isArray(data.channels) && data.channels.length > 0) setChannels(data.channels.map(sanitizeChannel));
-      if (typeof data.productType === 'string') setProductType(data.productType as typeof productType);
-      if (typeof data.nights === 'number') setNights(data.nights);
+      {
+        const rawPt = typeof data.productType === 'string' ? data.productType : '';
+        const validPt = VALID_PRODUCT_TYPES.has(rawPt) ? rawPt : '';
+        setProductType(validPt as typeof productType);
+        const rawN = finiteNum(data.nights);
+        const clampedN = validPt === 'longstay' ? Math.max(6, rawN) : rawN;
+        if (typeof data.nights === 'number') setNights(clampedN);
+      }
       setStorageMsg('✓ 공유 링크에서 입력값 복원됨');
       setTimeout(() => setStorageMsg(null), 3000);
       // fragment 클리어 (이중 적용 방지)
@@ -462,19 +469,25 @@ export default function BuilderPage() {
     if (saved) {
       if (typeof saved.packageName === 'string') setPackageName(saved.packageName);
       if (typeof saved.partyTiered === 'boolean') setPartyTiered(saved.partyTiered);
-      if (typeof saved.totalPax === 'number') setTotalPax(saved.totalPax);
-      if (typeof saved.adult === 'number') setAdult(saved.adult);
-      if (typeof saved.youth === 'number') setYouth(saved.youth);
-      if (typeof saved.child === 'number') setChild(saved.child);
-      if (typeof saved.infant === 'number') setInfant(saved.infant);
+      if (typeof saved.totalPax === 'number') setTotalPax(finiteNum(saved.totalPax));
+      if (typeof saved.adult === 'number') setAdult(finiteNum(saved.adult));
+      if (typeof saved.youth === 'number') setYouth(finiteNum(saved.youth));
+      if (typeof saved.child === 'number') setChild(finiteNum(saved.child));
+      if (typeof saved.infant === 'number') setInfant(finiteNum(saved.infant));
       if (Array.isArray(saved.vehicles)) setVehicles(saved.vehicles.map(sanitizeVehicle));
       if (Array.isArray(saved.guides)) setGuides(saved.guides.map(sanitizeGuide));
       if (Array.isArray(saved.stops)) setStops(saved.stops.map(sanitizeStop));
       if (typeof saved.startTime === 'string') setStartTime(saved.startTime);
-      if (typeof saved.salePrice === 'number') setSalePrice(saved.salePrice);
+      if (typeof saved.salePrice === 'number') setSalePrice(Math.max(0, finiteNum(saved.salePrice)));
       if (Array.isArray(saved.channels) && saved.channels.length > 0) setChannels(saved.channels.map(sanitizeChannel));
-      if (typeof saved.productType === 'string') setProductType(saved.productType as typeof productType);
-      if (typeof saved.nights === 'number') setNights(saved.nights);
+      {
+        const rawPt = typeof saved.productType === 'string' ? saved.productType : '';
+        const validPt = VALID_PRODUCT_TYPES.has(rawPt) ? rawPt : '';
+        setProductType(validPt as typeof productType);
+        const rawN = finiteNum(saved.nights);
+        const clampedN = validPt === 'longstay' ? Math.max(6, rawN) : rawN;
+        if (typeof saved.nights === 'number') setNights(clampedN);
+      }
       setStorageMsg('✓ 이전 입력값 복원됨');
       // 3초 후 메시지 자동 해제
       const t = setTimeout(() => setStorageMsg(null), 3000);
@@ -588,19 +601,22 @@ export default function BuilderPage() {
   // 저장 payload → 폼 setter 일괄 적용 (보관함 불러오기 공통). sanitize 경유로 손상 데이터 방어.
   const applyPayload = (d: Record<string, unknown>) => {
     setPackageName(typeof d.packageName === 'string' ? d.packageName : '');
-    setProductType(typeof d.productType === 'string' ? (d.productType as typeof productType) : '');
-    setNights(typeof d.nights === 'number' ? d.nights : 0);
+    const rawPt = typeof d.productType === 'string' ? d.productType : '';
+    const validPt = VALID_PRODUCT_TYPES.has(rawPt) ? rawPt : '';
+    setProductType(validPt as typeof productType);
+    const rawN = typeof d.nights === 'number' ? finiteNum(d.nights) : 0;
+    setNights(validPt === 'longstay' ? Math.max(6, rawN) : rawN);
     setPartyTiered(typeof d.partyTiered === 'boolean' ? d.partyTiered : false);
-    setTotalPax(typeof d.totalPax === 'number' ? d.totalPax : 0);
-    setAdult(typeof d.adult === 'number' ? d.adult : 0);
-    setYouth(typeof d.youth === 'number' ? d.youth : 0);
-    setChild(typeof d.child === 'number' ? d.child : 0);
-    setInfant(typeof d.infant === 'number' ? d.infant : 0);
+    setTotalPax(typeof d.totalPax === 'number' ? finiteNum(d.totalPax) : 0);
+    setAdult(typeof d.adult === 'number' ? finiteNum(d.adult) : 0);
+    setYouth(typeof d.youth === 'number' ? finiteNum(d.youth) : 0);
+    setChild(typeof d.child === 'number' ? finiteNum(d.child) : 0);
+    setInfant(typeof d.infant === 'number' ? finiteNum(d.infant) : 0);
     setVehicles(Array.isArray(d.vehicles) ? d.vehicles.map(sanitizeVehicle) : []);
     setGuides(Array.isArray(d.guides) ? d.guides.map(sanitizeGuide) : []);
     setStops(Array.isArray(d.stops) ? d.stops.map(sanitizeStop) : []);
     setStartTime(typeof d.startTime === 'string' ? d.startTime : '08:00');
-    setSalePrice(typeof d.salePrice === 'number' ? d.salePrice : 0);
+    setSalePrice(typeof d.salePrice === 'number' ? Math.max(0, finiteNum(d.salePrice)) : 0);
     setChannels(Array.isArray(d.channels) && d.channels.length > 0 ? d.channels.map(sanitizeChannel) : DEFAULT_CHANNEL_STATE);
   };
 
@@ -3222,7 +3238,7 @@ function NumField({
             if (/^-?0\d/.test(v)) v = v.replace(/^(-?)0+(\d)/, '$1$2');
             setDraft(v);
             const n = Number(v);
-            if (!Number.isNaN(n) && v !== '' && v !== '-') onChange(max !== undefined ? Math.min(max, n) : n);
+            if (!Number.isNaN(n) && v !== '' && v !== '-') onChange(Math.max(min, max !== undefined ? Math.min(max, n) : n));
             else if (v === '') onChange(0);
           }
         }}

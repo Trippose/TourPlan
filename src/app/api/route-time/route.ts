@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { AUTH_COOKIE, verifyAuthToken } from '@/lib/auth';
 
 // 1. Zod 입력 스키마 — strict + 좌표 범위 검증 (한국 영역 + 약간의 여유)
 const LegInputSchema = z
@@ -120,6 +121,13 @@ export async function POST(req: NextRequest) {
       },
       { status: 503 },
     );
+  }
+
+  // 명시 인증 검증 (proxy.ts 단독 의존 보강)
+  const secret = process.env.AUTH_SECRET;
+  const token = req.cookies.get(AUTH_COOKIE)?.value;
+  if (!secret || !(await verifyAuthToken(secret, token))) {
+    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
   }
 
   // Rate limit

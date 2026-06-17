@@ -260,7 +260,14 @@ export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad
                         <>
                           <button
                             type="button"
-                            onClick={() => { setLoadingId(it.id); setLoadPin(''); }}
+                            onClick={() => {
+                              if (it.pinHash) {
+                                setLoadingId(it.id);
+                                setLoadPin('');
+                              } else {
+                                onLoad(it, '');
+                              }
+                            }}
                             className="rounded-lg px-2.5 py-1 text-xs font-bold text-white"
                             style={{ backgroundColor: PAL.teal }}
                             title={it.pinHash ? '불러오려면 비밀번호 입력' : '불러오기'}
