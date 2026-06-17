@@ -581,7 +581,7 @@ export default function BuilderPage() {
     // 800ms 디바운스로 일원화한다(저장 유실 윈도우 최대 800ms).
     // 저장은 아래 디바운스 타이머에서 1회만 수행한다.
     // 디바운스 800ms + 약간의 여유 — 저장 완료 추정 후 'saved'로 전환
-    const t = setTimeout(() => setSaveStatus('saved'), 1000);
+    const t = setTimeout(() => setSaveStatus(saveState(payload) ? 'saved' : 'dirty'), 800);
     return () => clearTimeout(t);
   }, [hydrated, buildPayload]);
 

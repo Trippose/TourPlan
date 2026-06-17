@@ -395,6 +395,32 @@ check('R46', 'page.tsx 자동저장이 디바운스 전용 (입력당 동기 sav
   return true;
 });
 
+// ─────────────── 입력 검증·계산 회귀 (R47~R50, 2026-06-17) ───────────────
+
+check('R47', '관광 가격 입력 천원 단위 오라벨 박멸 (원 단위 1원 반영)', () => {
+  if (/tooltip="천원 단위"/.test(pageTsx)) return '천원 단위 오라벨 회귀 — 30 입력 시 30원 계산 버그 재발.';
+  return true;
+});
+
+check('R48', 'NumField min/max 클램프 (인원·금액·일수 음수·폭주 차단)', () => {
+  const s = pageTsx.indexOf('function NumField(');
+  if (s < 0) return 'NumField 정의 누락.';
+  const body = pageTsx.slice(s, s + 600);
+  if (!/min = 0/.test(body)) return 'NumField min 기본 0 클램프 누락 — 음수 입력 회귀.';
+  return true;
+});
+
+check('R49', '인원 통합 구분 모드전환 동기화 (handlePartyModeToggle)', () => {
+  if (!/handlePartyModeToggle/.test(pageTsx)) return '모드전환 동기화 핸들러 누락 — partyTotal 오염 회귀.';
+  if (/onChange=\{setPartyTiered\}/.test(pageTsx)) return 'ModeToggle이 setPartyTiered 직접 호출 — 동기화 우회 회귀.';
+  return true;
+});
+
+check('R50', '자동저장 saveState 반환값 판정 (실패 시 거짓 저장됨 박멸)', () => {
+  if (!/setSaveStatus\(saveState\(payload\)/.test(pageTsx)) return '자동저장 성공판정 누락 — 저장 실패 시 거짓표시 회귀.';
+  return true;
+});
+
 // ─────────────── 결과 출력 ───────────────
 const passed = results.filter((r) => r.status === 'PASS').length;
 const failed = results.filter((r) => r.status === 'FAIL').length;
