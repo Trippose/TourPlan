@@ -58,13 +58,14 @@ const serwist = new Serwist({
       }),
     },
     {
+      // 카카오 지도 타일/UI 이미지(t1·map·mts.daumcdn.net) — NetworkOnly.
+      // mts.daumcdn.net 타일은 CORS(ACAO) 헤더가 없어, StaleWhileRevalidate가
+      // cross-origin no-CORS 응답을 캐시/재검증하는 단계에서 "Failed to fetch" → net::ERR_FAILED를
+      // 유발했다(실측: SW 우회 시 타일 256x256 정상 로드, SW 경유 시 실패). 캐시 시도 없이
+      // 네트워크 응답(opaque 포함)을 그대로 통과시켜 지도 배경 타일이 정상 표시되게 한다.
+      // 지도 타일은 카카오 CDN Cache-Control + 브라우저 HTTP 캐시로 재요청 비용을 흡수한다.
       matcher: /^https:\/\/(t1|map|mts)\.daumcdn\.net\/.*/i,
-      handler: new StaleWhileRevalidate({
-        cacheName: "kakao-map-tiles",
-        plugins: [
-          new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 24 * 60 * 60 }),
-        ],
-      }),
+      handler: new NetworkOnly(),
     },
 
     // 3. 폰트 — 1년 캐시 (CacheFirst)
