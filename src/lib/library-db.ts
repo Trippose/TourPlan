@@ -6,7 +6,30 @@
 import { neon } from '@neondatabase/serverless';
 import type { LibraryItem, LibrarySummary } from '@/lib/storage';
 
-const DB_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
+// DB 접속 URL 해석 — Vercel Neon 통합이 prefix(예: STORAGE_)를 붙여 변수명을 바꿔도 견고히 찾는다.
+// 우선순위: 표준명 → STORAGE_ prefix → *_DATABASE_URL/*_POSTGRES_URL(UNPOOLED 제외) → postgres:// 값.
+function resolveDbUrl(): string {
+  const env = process.env as Record<string, string | undefined>;
+  const direct =
+    env.DATABASE_URL ||
+    env.POSTGRES_URL ||
+    env.STORAGE_DATABASE_URL ||
+    env.STORAGE_POSTGRES_URL ||
+    env.STORAGE_URL;
+  if (direct) return direct;
+  for (const [k, v] of Object.entries(env)) {
+    if (v && /DATABASE_URL$/.test(k) && !k.includes('UNPOOLED')) return v;
+  }
+  for (const [k, v] of Object.entries(env)) {
+    if (v && /POSTGRES_URL$/.test(k) && !k.includes('UNPOOLED')) return v;
+  }
+  for (const v of Object.values(env)) {
+    if (typeof v === 'string' && /^postgres(ql)?:\/\//.test(v)) return v;
+  }
+  return '';
+}
+
+const DB_URL = resolveDbUrl();
 
 export function isDbConfigured(): boolean {
   return DB_URL.length > 0;
