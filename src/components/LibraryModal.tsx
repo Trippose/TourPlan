@@ -172,12 +172,29 @@ export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad
               type="button"
               onClick={handleSave}
               disabled={!canSave}
+              title={
+                !name.trim()
+                  ? '상품 이름을 입력하세요'
+                  : !/^\d{4}$/.test(pin)
+                    ? '비밀번호(숫자 4자리)를 입력해야 저장됩니다'
+                    : '보관함에 저장'
+              }
               className="shrink-0 rounded-lg px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
               style={{ backgroundColor: PAL.violet }}
             >
               💾 저장
             </button>
           </div>
+          {!/^\d{4}$/.test(pin) && (
+            <p
+              className="mt-2 flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-bold"
+              style={{ color: PAL.rose, backgroundColor: '#FBE0E8' }}
+              role="alert"
+            >
+              <span aria-hidden>🔒</span>
+              비밀번호(숫자 4자리)를 입력해야 저장됩니다
+            </p>
+          )}
           <p className="mt-1 text-[10px]" style={{ color: PAL.mute }}>
             이 브라우저(localStorage)에 보관됩니다. 최대 {LIBRARY_MAX}건. <strong style={{ color: PAL.rose }}>숫자 4자리 비밀번호</strong>를 설정하면, 같은 기기를 공유한 사람도 이 비밀번호 없이는 삭제할 수 없습니다 (불러오기는 자유).
           </p>
