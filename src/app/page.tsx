@@ -1797,7 +1797,7 @@ export default function BuilderPage() {
                       value={c.name}
                       onChange={(e) => patchChannel(c.code, { name: e.target.value })}
                       placeholder="채널명"
-                      className="h-7 flex-1 min-w-0 rounded border bg-transparent px-1.5 text-base font-bold focus:outline-none focus:ring-1"
+                      className="h-9 flex-1 min-w-0 rounded-lg border bg-transparent px-2 text-base font-bold focus:outline-none focus:ring-1"
                       style={{
                         borderColor: 'transparent',
                         color: c.enabled ? PAL.ink : PAL.mute,
@@ -3295,7 +3295,7 @@ function PercentInput({
         const n = Number(e.target.value);
         if (!Number.isNaN(n) && e.target.value !== '') onChange(n / 100);
       }}
-      className="h-8 w-full rounded border bg-white px-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2"
+      className="h-10 w-full rounded-lg border bg-white px-2.5 text-right text-sm tabular-nums focus:outline-none focus:ring-2"
       style={{ borderColor: PAL.line }}
       aria-label={ariaLabel ?? '비율 %'}
       title={`${ariaLabel ?? '비율'} — 0~100 사이 백분율 입력 (예: 30 = 30%). 천분위까지 자동 반영.`}
