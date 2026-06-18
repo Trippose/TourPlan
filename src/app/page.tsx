@@ -2672,6 +2672,57 @@ export default function BuilderPage() {
                         ※ 상단 인원 입력 시 수익 발생 여부가 자동 판정됩니다.
                       </p>
                     )}
+                    {/* 글로벌 OTA 등록 판매 기준 상세 — 가장 보수적 채널(수수료 최고)을 별도 정밀 분석 */}
+                    {(() => {
+                      const otaCh = channels.find((c) => c.code === 'global-ota' && c.enabled);
+                      if (!otaCh) return null;
+                      const otaRate = otaCh.commission + otaCh.cardFee;
+                      const otaNet = Math.round(salePrice * (1 - otaRate));
+                      const otaMargin = otaNet - cost.costPerAdult;
+                      const otaBepN = channelAnalysis.bep.byChannel.find((b) => b.channelCode === 'global-ota')?.breakEvenN ?? null;
+                      const otaReachable = otaBepN !== null && partyTotal > 0 && partyTotal >= otaBepN;
+                      const otaTotal = partyTotal > 0 ? partyTotal * otaMargin : null;
+                      return (
+                        <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: 'rgba(192, 48, 107, 0.07)', border: `1px solid rgba(192,48,107,0.18)` }}>
+                          <div className="mb-1.5 text-xs font-black tracking-wide" style={{ color: PAL.rose }}>
+                            🌐 글로벌 OTA 등록 판매 기준 — 정밀 분석 (가장 보수적 · 수수료 {(otaRate * 100).toFixed(1)}%)
+                          </div>
+                          <ul className="space-y-1.5 text-xs leading-relaxed" style={{ color: PAL.ink }}>
+                            <li>
+                              ① <strong>실수령액</strong> — 판매가 {won(salePrice)} 중 OTA 수수료·카드 {(otaRate * 100).toFixed(1)}% 차감 시{' '}
+                              <strong style={{ color: PAL.rose }}>{won(otaNet)}</strong> 수령 (차감 {won(salePrice - otaNet)})
+                            </li>
+                            <li>
+                              ② <strong>1인 순이익</strong> — 실수령 {won(otaNet)} − 1인 원가 {won(cost.costPerAdult)} ={' '}
+                              <strong style={{ color: otaMargin >= 0 ? PAL.emerald : PAL.rose }}>{won(otaMargin)}</strong>
+                              {otaMargin < 0 && <span style={{ color: PAL.rose }}> (적자 — 판매가 인상 필요)</span>}
+                            </li>
+                            <li>
+                              ③ <strong>손익분기 인원</strong> —{' '}
+                              {otaBepN !== null ? (
+                                <>
+                                  <strong style={{ color: PAL.rose }}>{otaBepN}명</strong>부터 흑자 전환
+                                  {partyTotal > 0 && (otaReachable
+                                    ? <span style={{ color: PAL.emerald }}> · 현재 {partyTotal}명 충족 ✓</span>
+                                    : <span style={{ color: PAL.amber }}> · 현재 {partyTotal}명, {otaBepN - partyTotal}명 부족</span>)}
+                                </>
+                              ) : (
+                                <strong style={{ color: PAL.rose }}>도달 불가 (현재 판매가로는 수수료 차감 후 적자 구조)</strong>
+                              )}
+                            </li>
+                            {otaTotal !== null && otaReachable && (
+                              <li>
+                                ④ <strong>현재 인원 예상 총이익</strong> — {partyTotal}명 출발 확정 시{' '}
+                                <strong style={{ color: PAL.emerald }}>{won(otaTotal)}</strong> (1인 {won(otaMargin)} × {partyTotal}명)
+                              </li>
+                            )}
+                          </ul>
+                          <p className="mt-2 text-[11px] leading-relaxed" style={{ color: PAL.mute }}>
+                            💡 글로벌 OTA는 3개 채널 중 수수료가 가장 높아 <strong style={{ color: PAL.rose }}>이 기준만 충족하면 자체 모객·자체 온라인 등 모든 채널에서 수익이 자동 보장</strong>됩니다. 즉 OTA BEP가 사실상 “안전 출발 기준선”입니다.
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* 채널별 최소 판매가 + 최소 탑승 + 종합 권장 운영 텍스트 */}
@@ -2750,6 +2801,7 @@ export default function BuilderPage() {
                           );
                         }
                         return (
+                          <>
                           <p className="text-sm leading-relaxed" style={{ color: PAL.ink }}>
                             본 패키지 <strong style={{ color: PAL.rose }}>『{packageName || '(상품명 미입력)'}』</strong>은
                             판매가 <strong style={{ color: PAL.violet }}>{won(salePrice)}</strong> 기준 —
@@ -2778,6 +2830,24 @@ export default function BuilderPage() {
                               })()} 이상으로 판매하고, 최소 탑승 인원 {otaBep ?? selfOnBep ?? selfOffBep ?? '—'}명 이상으로 출발 확정해야 모든 채널에서 안정적 수익 발생이 보장됩니다.
                             </strong>
                           </p>
+                          {otaBep !== null && (() => {
+                            const otaCh2 = channels.find((c) => c.code === 'global-ota');
+                            const otaRate2 = otaCh2 ? otaCh2.commission + otaCh2.cardFee : 0.3;
+                            const otaMinSale2 = cost.costPerAdult > 0 && otaRate2 < 1 ? Math.ceil(cost.costPerAdult / (1 - otaRate2)) : null;
+                            const otaTargetSale2 = otaMinSale2 ? Math.ceil((otaMinSale2 * 1.2) / 1000) * 1000 : null;
+                            if (otaMinSale2 === null || otaTargetSale2 === null) return null;
+                            return (
+                              <p className="mt-3 rounded-lg p-3 text-sm leading-relaxed" style={{ backgroundColor: 'rgba(192, 48, 107, 0.06)', color: PAL.ink }}>
+                                🌐 <strong style={{ color: PAL.rose }}>글로벌 OTA 등록 판매 전략</strong> — 글로벌 OTA는 수수료 {(otaRate2 * 100).toFixed(0)}%로 3개 채널 중 가장 보수적이므로, OTA 기준으로 판매가·인원을 설계하면 전 채널 수익이 안전하게 보장됩니다.{' '}
+                                1인 원가 {won(cost.costPerAdult)}를 OTA 수수료 차감 후 회수하려면 <strong>최소 판매가 {won(otaMinSale2)}</strong>가 필요하고, 출발 취소·환불·환율·현장 변동비 여유까지 고려하면 <strong style={{ color: PAL.violet }}>{won(otaTargetSale2)} 내외</strong> 책정을 권장합니다.{' '}
+                                출발 확정 인원은 OTA 손익분기 <strong style={{ color: PAL.rose }}>{otaBep}명</strong>을 안전 기준선으로 삼아,{' '}
+                                {partyTotal >= otaBep
+                                  ? <>현재 <strong style={{ color: PAL.emerald }}>{partyTotal}명</strong>은 이미 이 기준을 충족하여 OTA를 포함한 전 채널에서 즉시 흑자 출발이 가능합니다.</>
+                                  : <>현재 {partyTotal}명에서 <strong style={{ color: PAL.rose }}>{otaBep - partyTotal}명</strong> 추가 모객하면 OTA를 포함한 모든 채널에서 흑자 출발이 확정됩니다.</>}
+                              </p>
+                            );
+                          })()}
+                          </>
                         );
                       })()}
                     </div>
