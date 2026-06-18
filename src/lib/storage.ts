@@ -239,7 +239,33 @@ export function migrateSlotsToLibrary(): number {
 // no-silent-fallback: 반환 mode('server'|'local')로 어느 경로인지 호출부에 노출한다.
 export type LibraryMode = 'server' | 'local';
 
-// 목록 로드 — 서버 우선, 실패/미설정 시 localStorage.
+// 마이그레이션 — 서버에 없는 localStorage 항목을 1회 업로드(UPSERT라 중복 안전).
+// 기존 기기에 쌓인 보관함을 서버 공유로 끌어올린다. 업로드 실패는 무시(다음 기회 재시도).
+async function migrateLocalToServer(serverItems: LibraryItem[]): Promise<LibraryItem[]> {
+  const local = loadLibrary();
+  const serverIds = new Set(serverItems.map((i) => i.id));
+  const toUpload = local.filter((i) => !serverIds.has(i.id));
+  if (toUpload.length === 0) return serverItems;
+  let latest = serverItems;
+  for (const item of toUpload) {
+    try {
+      const r = await fetch('/api/library', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item }),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        if (j?.ok && Array.isArray(j.items)) latest = j.items as LibraryItem[];
+      }
+    } catch (e) {
+      console.warn('[storage] 마이그레이션 업로드 실패(다음 기회 재시도):', e);
+    }
+  }
+  return latest;
+}
+
+// 목록 로드 — 서버 우선(+localStorage 미업로드 항목 마이그레이션), 실패/미설정 시 localStorage.
 export async function loadLibrarySmart(): Promise<{ items: LibraryItem[]; mode: LibraryMode }> {
   if (typeof window === 'undefined') return { items: [], mode: 'local' };
   try {
@@ -247,7 +273,8 @@ export async function loadLibrarySmart(): Promise<{ items: LibraryItem[]; mode: 
     if (r.ok) {
       const j = await r.json();
       if (j?.ok && j.mode === 'server' && Array.isArray(j.items)) {
-        return { items: j.items as LibraryItem[], mode: 'server' };
+        const merged = await migrateLocalToServer(j.items as LibraryItem[]);
+        return { items: merged, mode: 'server' };
       }
     }
   } catch (e) {
