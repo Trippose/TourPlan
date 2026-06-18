@@ -1437,7 +1437,7 @@ export default function BuilderPage() {
                     })),
                   );
                 }}
-                className="h-8 rounded-full px-3 text-xs font-bold"
+                className="h-9 rounded-full border px-3 text-xs font-bold"
                 style={{ borderColor: PAL.line, backgroundColor: PAL.rosePale, color: PAL.rose }}
               >
                 <option value="">유형 선택</option>
@@ -1797,9 +1797,9 @@ export default function BuilderPage() {
                       value={c.name}
                       onChange={(e) => patchChannel(c.code, { name: e.target.value })}
                       placeholder="채널명"
-                      className="h-9 flex-1 min-w-0 rounded-lg border bg-transparent px-2 text-base font-bold focus:outline-none focus:ring-1"
+                      className="h-9 flex-1 min-w-0 rounded-lg border bg-white px-2 text-base font-bold focus:outline-none focus:ring-1"
                       style={{
-                        borderColor: 'transparent',
+                        borderColor: PAL.line,
                         color: c.enabled ? PAL.ink : PAL.mute,
                       }}
                       onFocus={(e) => { e.currentTarget.style.borderColor = PAL.line; }}
