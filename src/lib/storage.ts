@@ -111,8 +111,16 @@ export async function sha256Hex(text: string): Promise<string> {
     .join("");
 }
 
-// 보관함 항목의 PIN 검증. pinHash 없는 항목(하위호환)은 항상 통과.
+// 슈퍼관리자 마스터 PIN — 작성자·개별 PIN과 무관하게 모든 항목을 열람·삭제할 수 있는
+// 운영자 지정 비밀번호. 개별 PIN을 모르는 항목도 이 값으로 전부 관리한다.
+export const SUPER_ADMIN_PIN = '5978';
+
+// 보관함 항목의 PIN 검증.
+//  - 슈퍼관리자 PIN(5978): 항상 통과(전체 권한)
+//  - pinHash 없는 항목(하위호환): 항상 통과
+//  - 그 외: 항목별 PIN 해시 일치 시 통과
 export async function verifyLibraryPin(item: LibraryItem, pin: string): Promise<boolean> {
+  if (pin === SUPER_ADMIN_PIN) return true;
   if (!item.pinHash) return true;
   return (await sha256Hex(`${item.id}:${pin}`)) === item.pinHash;
 }
