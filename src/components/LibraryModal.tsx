@@ -20,7 +20,7 @@ interface Props {
   onClose: () => void;
   items: LibraryItem[];
   currentName: string; // 저장 input 기본값 (현재 패키지명)
-  onSave: (name: string, pin: string) => void;
+  onSave: (name: string, pin: string, author: string) => void;
   onLoad: (item: LibraryItem, pin: string) => void;
   onDelete: (id: string, pin: string) => void;
   onNew: () => void; // 새 견적 — 폼을 빈 양식으로 초기화
@@ -38,6 +38,7 @@ const onlyDigits4 = (s: string) => s.replace(/\D/g, '').slice(0, 4);
 
 export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad, onDelete, onNew }: Props) {
   const [name, setName] = useState(currentName);
+  const [author, setAuthor] = useState(''); // 작성자명 (선택)
   const [pin, setPin] = useState(''); // 저장용 4자리 비밀번호
   const [deletingId, setDeletingId] = useState<string | null>(null); // 삭제 PIN 입력 중인 항목
   const [deletePin, setDeletePin] = useState('');
@@ -48,6 +49,7 @@ export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad
   useEffect(() => {
     if (open) {
       setName(currentName);
+      setAuthor('');
       setPin('');
       setDeletingId(null);
       setDeletePin('');
@@ -69,7 +71,7 @@ export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad
   const canSave = name.trim().length > 0 && /^\d{4}$/.test(pin);
   const handleSave = () => {
     if (!canSave) return;
-    onSave(name, pin);
+    onSave(name, pin, author);
     setPin('');
   };
 
@@ -130,6 +132,18 @@ export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }}
             />
             <input
+              id="lib-save-author"
+              type="text"
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              maxLength={30}
+              placeholder="작성자명 (선택)"
+              aria-label="작성자명"
+              className="w-36 rounded-lg border px-2 py-2 text-sm"
+              style={{ borderColor: PAL.line, color: PAL.ink }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }}
+            />
+            <input
               id="lib-save-pin"
               type="password"
               inputMode="numeric"
@@ -181,7 +195,10 @@ export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad
                       <div className="mt-0.5 text-[11px]" style={{ color: PAL.mute }}>
                         {it.summary.packageName || '(상품명 없음)'} · {it.summary.partyTotal}명 · 일정 {it.summary.stops}건 · {fmtWon(it.summary.salePrice)}
                       </div>
-                      <div className="text-[10px]" style={{ color: PAL.mute }}>{fmtDate(it.savedAt)}</div>
+                      <div className="text-[10px]" style={{ color: PAL.mute }}>
+                        {it.author && <span style={{ color: PAL.violet, fontWeight: 700 }}>✍ {it.author} · </span>}
+                        {fmtDate(it.savedAt)}
+                      </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       {deletingId === it.id ? (

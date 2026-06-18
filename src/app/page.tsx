@@ -620,14 +620,14 @@ export default function BuilderPage() {
     setChannels(Array.isArray(d.channels) && d.channels.length > 0 ? d.channels.map(sanitizeChannel) : DEFAULT_CHANNEL_STATE);
   };
 
-  // 보관함 — 현재 견적을 이름 + 4자리 PIN 붙여 저장 (PIN은 삭제 보호용)
-  const handleSaveToLibrary = async (name: string, pin: string) => {
+  // 보관함 — 현재 견적을 이름 + 작성자명 + 4자리 PIN 붙여 저장 (PIN은 삭제 보호용)
+  const handleSaveToLibrary = async (name: string, pin: string, author: string) => {
     if (!/^\d{4}$/.test(pin)) {
       setStorageMsg('⚠ 비밀번호는 숫자 4자리로 설정하세요');
       setTimeout(() => setStorageMsg(null), 3000);
       return;
     }
-    const saved = await saveToLibrary(name, buildPayload(), pin);
+    const saved = await saveToLibrary(name, buildPayload(), pin, undefined, author);
     if (saved) {
       setLibraryItems(loadLibrary());
       setStorageMsg(`✓ "${saved.name}" 상품 보관함에 저장됨 (삭제 시 비밀번호 필요)`);

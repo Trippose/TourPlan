@@ -93,6 +93,7 @@ export interface LibrarySummary {
 export interface LibraryItem {
   id: string;
   name: string;
+  author?: string; // 작성자명 (선택 — 누가 만든 상품인지 표시. 없으면 미표시, 하위호환)
   savedAt: string; // ISO timestamp
   summary: LibrarySummary;
   data: unknown; // 견적 payload 전체
@@ -180,6 +181,7 @@ export async function saveToLibrary(
   data: unknown,
   pin?: string,
   id?: string,
+  author?: string,
 ): Promise<LibraryItem | null> {
   if (typeof window === "undefined") return null;
   const items = loadLibrary();
@@ -188,6 +190,7 @@ export async function saveToLibrary(
   const item: LibraryItem = {
     id: itemId,
     name: name.trim() || "이름 없는 상품",
+    author: author?.trim() || undefined,
     savedAt: new Date().toISOString(),
     summary: summaryFromData(data),
     data,
