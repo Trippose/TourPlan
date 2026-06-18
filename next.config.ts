@@ -30,7 +30,11 @@ const CSP_DIRECTIVES = [
   "img-src 'self' data: blob: https://t1.daumcdn.net https://*.daumcdn.net https://*.kakao.com http://t1.daumcdn.net http://*.daumcdn.net",
   // 카카오 장소·주소 검색(Places.keywordSearch)은 dev(http)에서 http://dapi.kakao.com 으로 XHR 한다(실측: [FAILED] csp).
   // → http://dapi.kakao.com 허용 필요. 프로덕션(https)에선 https://dapi.kakao.com 사용(둘 다 허용).
-  "connect-src 'self' https://dapi.kakao.com http://dapi.kakao.com https://apis-navi.kakaomobility.com https://t1.daumcdn.net http://t1.daumcdn.net",
+  // 지도 배경 타일(mts.daumcdn.net 등)은 서비스워커가 fetch()로 가져오는데, fetch는 connect-src
+  // 적용을 받는다. t1만 있고 mts가 없어 SW fetch가 CSP 차단(net::ERR_FAILED)됐다(실측: 콘솔
+  // "Connecting to mts.daumcdn.net violates ... connect-src" 위반 메시지). img-src와 동일하게
+  // *.daumcdn.net(±http)을 추가해 모든 카카오 타일 호스트(t1·map·mts)의 SW fetch를 허용한다.
+  "connect-src 'self' https://dapi.kakao.com http://dapi.kakao.com https://apis-navi.kakaomobility.com https://t1.daumcdn.net https://*.daumcdn.net http://t1.daumcdn.net http://*.daumcdn.net",
   "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",
