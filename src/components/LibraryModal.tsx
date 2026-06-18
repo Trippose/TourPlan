@@ -38,7 +38,7 @@ const onlyDigits4 = (s: string) => s.replace(/\D/g, '').slice(0, 4);
 
 export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad, onDelete, onNew }: Props) {
   const [name, setName] = useState(currentName);
-  const [author, setAuthor] = useState(''); // 작성자명 (선택)
+  const [author, setAuthor] = useState('워터트리'); // 작성자 — 워터트리/파인드루트 중 선택
   const [pin, setPin] = useState(''); // 저장용 4자리 비밀번호
   const [deletingId, setDeletingId] = useState<string | null>(null); // 삭제 PIN 입력 중인 항목
   const [deletePin, setDeletePin] = useState('');
@@ -49,7 +49,7 @@ export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad
   useEffect(() => {
     if (open) {
       setName(currentName);
-      setAuthor('');
+      setAuthor('워터트리');
       setPin('');
       setDeletingId(null);
       setDeletePin('');
@@ -131,18 +131,29 @@ export function LibraryModal({ open, onClose, items, currentName, onSave, onLoad
               style={{ borderColor: PAL.line, color: PAL.ink }}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }}
             />
-            <input
-              id="lib-save-author"
-              type="text"
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-              maxLength={30}
-              placeholder="작성자명 (선택)"
-              aria-label="작성자명"
-              className="w-36 rounded-lg border px-2 py-2 text-sm"
-              style={{ borderColor: PAL.line, color: PAL.ink }}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }}
-            />
+            <div
+              className="inline-flex shrink-0 overflow-hidden rounded-lg border"
+              style={{ borderColor: PAL.line }}
+              role="group"
+              aria-label="작성자 선택"
+            >
+              {(['워터트리', '파인드루트'] as const).map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => setAuthor(a)}
+                  aria-pressed={author === a}
+                  className="px-3 py-2 text-sm font-bold transition"
+                  style={
+                    author === a
+                      ? { backgroundColor: PAL.violet, color: '#fff' }
+                      : { backgroundColor: '#fff', color: PAL.mute }
+                  }
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
             <input
               id="lib-save-pin"
               type="password"
