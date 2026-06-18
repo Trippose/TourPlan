@@ -233,3 +233,73 @@ export function migrateSlotsToLibrary(): number {
   }
   return migrated;
 }
+
+// ──────────────── 서버 우선 + localStorage 폴백 (공유 보관함) ────────────────
+// DB(Neon)가 설정돼 있으면 /api/library로 서버 저장(모든 기기·사용자 공유), 아니면 localStorage.
+// no-silent-fallback: 반환 mode('server'|'local')로 어느 경로인지 호출부에 노출한다.
+export type LibraryMode = 'server' | 'local';
+
+// 목록 로드 — 서버 우선, 실패/미설정 시 localStorage.
+export async function loadLibrarySmart(): Promise<{ items: LibraryItem[]; mode: LibraryMode }> {
+  if (typeof window === 'undefined') return { items: [], mode: 'local' };
+  try {
+    const r = await fetch('/api/library', { cache: 'no-store' });
+    if (r.ok) {
+      const j = await r.json();
+      if (j?.ok && j.mode === 'server' && Array.isArray(j.items)) {
+        return { items: j.items as LibraryItem[], mode: 'server' };
+      }
+    }
+  } catch (e) {
+    console.warn('[storage] remote load 실패 — localStorage 폴백:', e);
+  }
+  return { items: loadLibrary(), mode: 'local' };
+}
+
+// 저장 — localStorage에 저장(백업) 후 서버 UPSERT 시도. 서버 성공 시 server 목록 반환.
+export async function saveToLibrarySmart(
+  name: string,
+  data: unknown,
+  pin?: string,
+  author?: string,
+): Promise<{ item: LibraryItem | null; items: LibraryItem[]; mode: LibraryMode }> {
+  const item = await saveToLibrary(name, data, pin, undefined, author);
+  if (!item) return { item: null, items: loadLibrary(), mode: 'local' };
+  if (typeof window !== 'undefined') {
+    try {
+      const r = await fetch('/api/library', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item }),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        if (j?.ok && j.mode === 'server' && Array.isArray(j.items)) {
+          return { item, items: j.items as LibraryItem[], mode: 'server' };
+        }
+      }
+    } catch (e) {
+      console.warn('[storage] remote save 실패 — localStorage 폴백:', e);
+    }
+  }
+  return { item, items: loadLibrary(), mode: 'local' };
+}
+
+// 삭제 — localStorage 삭제 후 서버 삭제 시도. 서버 성공 시 server 목록 반환.
+export async function deleteFromLibrarySmart(id: string): Promise<{ items: LibraryItem[]; mode: LibraryMode }> {
+  deleteFromLibrary(id);
+  if (typeof window !== 'undefined') {
+    try {
+      const r = await fetch(`/api/library?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (r.ok) {
+        const j = await r.json();
+        if (j?.ok && j.mode === 'server' && Array.isArray(j.items)) {
+          return { items: j.items as LibraryItem[], mode: 'server' };
+        }
+      }
+    } catch (e) {
+      console.warn('[storage] remote delete 실패:', e);
+    }
+  }
+  return { items: loadLibrary(), mode: 'local' };
+}

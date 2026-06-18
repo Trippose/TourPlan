@@ -52,7 +52,7 @@ import type {
 import { computeItinerary, formatMin } from '@/lib/itinerary';
 import {
   loadState, saveState, clearState, SESSION_FLAG,
-  loadLibrary, saveToLibrary, deleteFromLibrary, verifyLibraryPin, migrateSlotsToLibrary, LIBRARY_MAX,
+  loadLibrary, loadLibrarySmart, saveToLibrarySmart, deleteFromLibrarySmart, verifyLibraryPin, migrateSlotsToLibrary, LIBRARY_MAX,
   type LibraryItem,
 } from '@/lib/storage';
 
@@ -627,10 +627,10 @@ export default function BuilderPage() {
       setTimeout(() => setStorageMsg(null), 3000);
       return;
     }
-    const saved = await saveToLibrary(name, buildPayload(), pin, undefined, author);
+    const { item: saved, items, mode } = await saveToLibrarySmart(name, buildPayload(), pin, author);
     if (saved) {
-      setLibraryItems(loadLibrary());
-      setStorageMsg(`✓ "${saved.name}" 상품 보관함에 저장됨 (삭제 시 비밀번호 필요)`);
+      setLibraryItems(items);
+      setStorageMsg(`✓ "${saved.name}" 보관함 저장됨 — ${mode === 'server' ? '서버 공유(모든 기기)' : '이 기기에만 (DB 미설정)'}`);
     } else {
       setStorageMsg(`⚠ 저장 실패 — 상품 보관함이 가득 찼습니다 (최대 ${LIBRARY_MAX}건). 불필요한 상품을 삭제하세요.`);
     }
@@ -659,13 +659,14 @@ export default function BuilderPage() {
       setTimeout(() => setStorageMsg(null), 3000);
       return;
     }
-    deleteFromLibrary(id);
-    setLibraryItems(loadLibrary());
+    const { items } = await deleteFromLibrarySmart(id);
+    setLibraryItems(items);
   };
 
   // 보관함 열기 (목록 새로고침 후 모달 오픈)
   const openLibrary = () => {
-    setLibraryItems(loadLibrary());
+    setLibraryItems(loadLibrary()); // 즉시 로컬 표시
+    void loadLibrarySmart().then(({ items }) => setLibraryItems(items)); // 서버 우선 갱신(설정 시)
     setShowLibraryModal(true);
   };
 
